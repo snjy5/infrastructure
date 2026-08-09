@@ -1,0 +1,12 @@
+myhosts:
+  hosts:
+    my_host_01:
+      ansible_host: 127.0.0.1
+
+webservers:
+  hosts:
+    webserver01:
+      ansible_host: 127.0.0.1
+      http_port: 80
+  vars:
+    ansible_user: root
