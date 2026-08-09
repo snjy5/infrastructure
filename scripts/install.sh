@@ -4,7 +4,7 @@ nms_req="$nms_dir/requirements.yml"
 nms_install="$nms_dir/nms-install.yml"
 nms_pb="$nms_dir/nms-playbook.yml"
 inventory="ansible/inventory/inventory.yml"
-pb="ansible/inventory/playbook.yml"
+pb="ansible/playbooks/playbook.yml"
 
 ansible-galaxy install -fr $nms_req
 ansible-playbook -i $inventory $nms_install
