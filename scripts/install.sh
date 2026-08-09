@@ -6,9 +6,10 @@ nms_pb="$nms_dir/nms-playbook.yml"
 inventory="ansible/inventory/inventory.yml"
 pb="ansible/inventory/playbook.yml"
 
-ansible-playbook -i $inventory $pb
 ansible-galaxy install -fr $nms_req
 ansible-playbook -i $inventory $nms_install
 ansible-playbook -i $inventory $nms_pb
+
+ansible-playbook -i $inventory $pb
 
 timeout 30 ansible all -i $inventory -m ping
