@@ -6,5 +6,7 @@ nms_pb_file="$nms_dir/nms-playbook.yml"
 
 
 ansible-galaxy install -fr $req_file
-ansible-playbook -i inventory $nms_install_file
-ansible-playbook -i /etc/hosts $nms_pb_file
+ansible-playbook -i ansible/inventory $nms_install_file
+ansible-playbook -i ansible/inventory $nms_pb_file
+
+timeout 30 ansible all -i ansible/inventory/hosts.ini -m ping
