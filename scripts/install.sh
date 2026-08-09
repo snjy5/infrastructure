@@ -1,4 +1,7 @@
-apt install ansible -y
+apt install ansible ssh -y
+systemctl start ssh
+ssh-keygen | yes ""
+
 nms_dir="ansible/roles/nginx"
 nms_req="$nms_dir/requirements.yml"
 nms_install="$nms_dir/nms-install.yml"
