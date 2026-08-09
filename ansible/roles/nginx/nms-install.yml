@@ -1,0 +1,17 @@
+- name: Install NGINX Management Suite
+  hosts: nms
+
+  tasks:
+    - name: Install NMS
+      ansible.builtin.include_role:
+        name: nginxinc.nginx_management_suite
+      vars:
+        nms_setup: install
+        nms_user_name: admin
+        nms_user_passwd: default
+        nginx_type: plus
+        nginx_selinux: true
+        nginx_selinux_enforcing: false
+        nginx_license:
+          certificate: nginx-repo.crt
+          key: nginx-repo.key
