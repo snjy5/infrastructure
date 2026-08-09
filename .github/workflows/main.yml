@@ -12,4 +12,4 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: Install
-      run: sudo scripts/install.sh
+      run: sudo bash scripts/install.sh
