@@ -1,6 +1,6 @@
 apt install ansible ssh -y
 systemctl start ssh
-ssh-keygen
+echo "y" | ssh-keygen -t ed25519 -N "" -f ~/.ssh/id_ed25519
 
 nms_dir="ansible/roles/nginx"
 nms_req="$nms_dir/requirements.yml"
