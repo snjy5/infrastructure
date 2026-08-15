@@ -6,7 +6,7 @@ on:
 
 env:
   INVENTORY: ansible/inventory/inventory.yml
-  NMS_DIR: ansible/roles/nginx
+  NGINX_DIR: ansible/roles/nginx
 
 jobs:
   build:
@@ -25,16 +25,10 @@ jobs:
       run: pip install ansible
 
     - name: Install Galaxy Requirements
-      run: ansible-galaxy install -fr ${{ env.NMS_DIR }}/requirements.yml
+      run: ansible-galaxy install -fr ${{ env.NGINX_DIR }}/requirements.yml
 
     - name: Test Inventory Connectivity
       run: ansible all -i ${{ env.INVENTORY }} -m ping
-
-    - name: Run NMS Install Playbook
-      run: ansible-playbook -i ${{ env.INVENTORY }} ${{ env.NMS_DIR }}/nms-install.yml
-
-    - name: Run NMS Config Playbook
-      run: ansible-playbook -i ${{ env.INVENTORY }} ${{ env.NMS_DIR }}/nms-playbook.yml
-
+      
     - name: Run Main Playbook
       run: ansible-playbook -i ${{ env.INVENTORY }} ansible/playbooks/playbook.yml
