@@ -1,134 +1,66 @@
-#user  nobody;
-
-worker_processes  auto;
-
-#error_log  logs/error.log;
-#error_log  logs/error.log  notice;
-#error_log  logs/error.log  info;
-
-#pid        logs/nginx.pid;
-
+user nobody;
+worker_processes auto;
 
 events {
-    worker_connections  1024;
+    worker_connections 1024;
 }
 
-
 http {
-    include       mime.types;
-    default_type  application/octet-stream;
+    include mime.types;
+    default_type application/octet-stream;
 
-    #log_format  main  '$remote_addr - $remote_user [$time_local] "$request" '
-    #                  '$status $body_bytes_sent "$http_referer" '
-    #                  '"$http_user_agent" "$http_x_forwarded_for"';
-
-    #access_log  logs/access.log  main;
-
-    sendfile        on;
-    tcp_nopush     on;
+    # Performance & Socket Optimization
+    sendfile on;
+    tcp_nopush on;
     tcp_nodelay on;
-
-
-    #keepalive_timeout  0;
-
-    client_body_buffer_size 10K;
-    client_header_buffer_size 1k;
-    client_max_body_size 8m;
-    large_client_header_buffers 2 1k;
-
     keepalive_timeout 15;
 
+    # Request Buffer Limits
+    client_body_buffer_size 128k;
+    client_header_buffer_size 1k;
+    client_max_body_size 8m;
+    large_client_header_buffers 4 8k;
+
+    # Asynchronous I/O & Large File Handling
     directio 4m;
+    directio_alignment 512;
     aio threads;
 
-    open_file_cache max=1000 inactive=30s;
-    open_file_cache_valid 60s;
+    # File Descriptor Cache
+    open_file_cache max=10000 inactive=60s;
+    open_file_cache_valid 30s;
     open_file_cache_min_uses 2;
-    open_file_cache_errors on;
-
+    open_file_cache_errors off;
 
     server {
-        listen       8080;
-        server_name  localhost;
+        listen 8080;
+        server_name localhost;
 
-        #access_log  logs/host.access.log  main;
+        root /var/www/html;
+        index index.html index.htm;
+
+        # Streaming Rate Limiting (initial burst + steady bitrate)
+        limit_rate_after 5m;
+        limit_rate 1m;
 
         location / {
-            root /var/www/html;
-            index  index.html index.htm;
+            try_files $uri $uri/ =404;
         }
 
-	limit_rate_after 5m;
-	limit_rate 1m;
+        # Media Handling & Byte-Range Optimization
+        location ~* \.(mp4|m4v|mkv|webm|ts|m3u8)$ {
+            mp4;
+            mp4_buffer_size 1m;
+            mp4_max_buffer_size 5m;
 
+            # Enable byte-range support for video seeking
+            add_header Accept-Ranges bytes;
+            add_header Cache-Control "public, max-age=31536000, immutable";
+        }
 
-        #error_page  404              /404.html;
-
-        # redirect server error pages to the static page /50x.html
-        #
-        error_page   500 502 503 504  /50x.html;
+        error_page 500 502 503 504 /50x.html;
         location = /50x.html {
             root /var/www/html;
         }
-
-        # proxy the PHP scripts to Apache listening on 127.0.0.1:80
-        #
-        #location ~ \.php$ {
-        #    proxy_pass   http://127.0.0.1;
-        #}
-
-        # pass the PHP scripts to FastCGI server listening on 127.0.0.1:9000
-        #
-        #location ~ \.php$ {
-        #    root /var/www/html;
-        #    fastcgi_pass   127.0.0.1:9000;
-        #    fastcgi_index  index.php;
-        #    fastcgi_param  SCRIPT_FILENAME  /scripts$fastcgi_script_name;
-        #    include        fastcgi_params;
-        #}
-
-        # deny access to .htaccess files, if Apache's document root
-        # concurs with nginx's one
-        #
-        #location ~ /\.ht {
-        #    deny  all;
-        #}
     }
-
-
-    # another virtual host using mix of IP-, name-, and port-based configuration
-    #
-    #server {
-    #    listen       8000;
-    #    listen       somename:8080;
-    #    server_name  somename  alias  another.alias;
-
-    #    location / {
-    #        root /var/www/html;
-    #        index  index.html index.htm;
-    #    }
-    #}
-
-
-    # HTTPS server
-    #
-    #server {
-    #    listen       443 ssl;
-    #    server_name  localhost;
-
-    #    ssl_certificate      cert.pem;
-    #    ssl_certificate_key  cert.key;
-
-    #    ssl_session_cache    shared:SSL:1m;
-    #    ssl_session_timeout  5m;
-
-    #    ssl_ciphers  HIGH:!aNULL:!MD5;
-    #    ssl_prefer_server_ciphers  on;
-
-    #    location / {
-    #        root /var/www/html;
-    #        index  index.html index.htm;
-    #    }
-    #}
-
 }
