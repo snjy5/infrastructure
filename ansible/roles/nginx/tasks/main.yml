@@ -5,4 +5,8 @@
     owner: root
     group: root
     mode: '0644'
-  notify: Reload Nginx
+    
+- name: Reload nginx
+  ansible.builtin.service:
+    name: nginx
+    state: reloaded
