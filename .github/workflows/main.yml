@@ -32,3 +32,6 @@ jobs:
       
     - name: Run Main Playbook
       run: ansible-playbook -i ${{ env.INVENTORY }} ansible/playbooks/playbook.yml
+
+    - name: Verify Nginx is running
+      run: curl --fail http://localhost:8080
