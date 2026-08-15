@@ -1,9 +1,14 @@
-- name: My first play
-  hosts: myhosts
-  tasks:
-   - name: Ping my hosts
-     ansible.builtin.ping:
+- name: Deploy web server
+  hosts: all
+  become: true  # Runs with sudo/root privileges
 
-   - name: Print message
-     ansible.builtin.debug:
-       msg: Hello world
+  pre_tasks:
+    - name: Ping my hosts for testing
+      ansible.builtin.ping:
+
+    - name: Print message
+      ansible.builtin.debug:
+        msg: "Connected successfully!"
+
+  roles:
+    - nginx

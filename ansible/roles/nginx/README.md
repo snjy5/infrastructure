@@ -3,7 +3,7 @@ Every "optimization" we do is simply fine tuning for specific resources we serve
 
 ## [F] File server
 ### [F.1] config location
-`nginx/nginx-file.conf`
+`templates/uncompressed_file.conf.j2`
 
 ### [F.2] spawn nginx processes dynamically
 Use this inside the global configuration of nginx:
@@ -38,7 +38,7 @@ For video server, we have to turn the compression off above all, as video files 
 Revert the [F.3] entirely, or remove any such options.
 
 ### [V.1] config location
-`nginx/nginx-video.conf`
+`templates/video.conf.j2`
 
 ### [V.2] Direct I/O instead of buffers
 Buffering hurts the performance when serving media files, so instead directly serve the files, in http block:
