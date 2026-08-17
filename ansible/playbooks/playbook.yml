@@ -12,3 +12,4 @@
 
   roles:
     - nginx
+    - wireguard

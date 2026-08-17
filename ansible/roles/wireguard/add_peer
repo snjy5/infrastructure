@@ -2,7 +2,7 @@
 import sys
 
 if len(sys.argv) < 2:
-    print("Usage: python3 add_peer <peer_name>")
+    print("Usage: add_peer <peer_name>")
     sys.exit(1)
 
 peer_name = sys.argv[1]
