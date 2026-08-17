@@ -1,11 +1,4 @@
 [Interface]
-PrivateKey = {{ wireguard_private_key }}
+PrivateKey = {{ wg_private_key_result.stdout }}
 Address = {{ wireguard_address }}
 ListenPort = {{ wireguard_port }}
-
-{% for peer in wireguard_peers %}
-[Peer]
-# {{ peer.name }}
-PublicKey = {{ peer.public_key }}
-AllowedIPs = {{ peer.allowed_ips }}
-{% endfor %}

@@ -1,14 +1,4 @@
 ---
 # Server settings
-wireguard_private_key: "REPLACE_WITH_SERVER_PRIVATE_KEY"
 wireguard_address: "10.0.0.1/24"
 wireguard_port: 51820
-
-# List of peers
-wireguard_peers:
-  - name: "test_client_01"
-    public_key: "REPLACE_WITH_PEER_01_PUBLIC_KEY"
-    allowed_ips: "10.0.0.2/32"
-  - name: "my_phone"
-    public_key: "REPLACE_WITH_PHONE_PUBLIC_KEY"
-    allowed_ips: "10.0.0.3/32"

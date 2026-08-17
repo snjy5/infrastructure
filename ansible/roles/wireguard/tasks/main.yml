@@ -15,6 +15,16 @@
     group: root
     mode: '0700'
 
+- name: Generate WireGuard private key
+  ansible.builtin.shell: wg genkey > /etc/wireguard/private.key
+  args:
+    creates: /etc/wireguard/private.key
+
+- name: Read private key into variable
+  ansible.builtin.command: cat /etc/wireguard/private.key
+  register: wg_private_key_result
+  changed_when: false
+
 - name: Deploy WireGuard configuration from template
   ansible.builtin.template:
     src: wg0.conf.j2
