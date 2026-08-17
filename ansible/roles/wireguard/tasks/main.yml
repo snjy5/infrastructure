@@ -1,4 +1,12 @@
 ---
+- name: Ensure WireGuard configuration directory exists
+  ansible.builtin.file:
+    path: /etc/wireguard
+    state: directory
+    owner: root
+    group: root
+    mode: '0700'
+
 - name: Deploy WireGuard configuration from template
   ansible.builtin.template:
     src: wg0.conf.j2
