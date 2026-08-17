@@ -1,11 +1,18 @@
 ---
-- name: Install WireGuard package
+- name: Install WireGuard packages
   ansible.builtin.apt:
     name: 
       - wireguard
       - wireguard-tools
     state: present
     update_cache: yes
+
+- name: Enable IP forwarding
+  ansible.posix.sysctl:
+    name: net.ipv4.ip_forward
+    value: '1'
+    state: present
+    reload: yes
 
 - name: Ensure WireGuard configuration directory exists
   ansible.builtin.file:
@@ -20,6 +27,13 @@
   args:
     creates: /etc/wireguard/private.key
 
+- name: Set secure permissions on the private key
+  ansible.builtin.file:
+    path: /etc/wireguard/private.key
+    owner: root
+    group: root
+    mode: '0600'
+
 - name: Read private key into variable
   ansible.builtin.command: cat /etc/wireguard/private.key
   register: wg_private_key_result
@@ -33,45 +47,3 @@
     group: root
     mode: '0600'
   notify: Restart WireGuard
-
-- name: Enable IP forwarding
-  ansible.posix.sysctl:
-    name: net.ipv4.ip_forward
-    value: '1'
-    state: present
-    reload: yes
-
-- name: Check if WireGuard private key already exists
-  ansible.builtin.stat:
-    path: /etc/wireguard/privatekey
-  register: private_key_stat
-
-- name: Generate WireGuard private key if it does not exist
-  ansible.builtin.command:
-    cmd: wg genkey > /etc/wireguard/privatekey
-    creates: /etc/wireguard/privatekey
-  when: not private_key_stat.stat.exists
-
-- name: Set secure permissions on the private key
-  ansible.builtin.file:
-    path: /etc/wireguard/privatekey
-    owner: root
-    group: root
-    mode: '0600'
-
-- name: Read the server's private key
-  ansible.builtin.slurp:
-    src: /etc/wireguard/privatekey
-  register: private_key_file
-
-- name: Generate and read the server's public key
-  ansible.builtin.command:
-    cmd: wg pubkey
-    stdin: "{{ private_key_file['content'] | b64decode }}"
-  register: public_key_file
-  changed_when: false
-
-- name: Store server public key as a fact
-  ansible.builtin.set_fact:
-    wireguard_public_key: "{{ public_key_file.stdout }}"
-
