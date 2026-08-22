@@ -47,3 +47,28 @@
     group: root
     mode: '0600'
   notify: Restart WireGuard
+
+- name: Verify WireGuard is listening on port 51820
+  ansible.builtin.wait_for:
+    port: 51820
+    state: started
+    timeout: 10
+
+- name: Verify WireGuard interface link is UP
+  ansible.builtin.command: ip link show wg0
+  register: wg_interface_status
+  changed_when: false
+
+- name: Ping the internal WireGuard tunnel IP
+  ansible.builtin.command: ping -c 3 10.0.1.1
+  register: wg_ping_status
+  changed_when: false
+
+- name: Fetch active WireGuard runtime status
+  ansible.builtin.command: wg show
+  register: wg_show_output
+  changed_when: false
+
+- name: Debug and print the final WireGuard state to CI Logs
+  ansible.builtin.debug:
+    var: wg_show_output.stdout_lines
