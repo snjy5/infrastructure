@@ -48,12 +48,6 @@
     mode: '0600'
   notify: Restart WireGuard
 
-- name: Verify WireGuard is listening on port 51820
-  ansible.builtin.wait_for:
-    port: 51820
-    state: started
-    timeout: 10
-
 - name: Verify WireGuard interface link is UP
   ansible.builtin.command: ip link show wg0
   register: wg_interface_status
