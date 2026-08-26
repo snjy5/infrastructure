@@ -1,4 +1,4 @@
-- name: Deploy web server
+- name: Deploy utilities
   hosts: all
   become: true  # Runs with sudo/root privileges
 
@@ -14,3 +14,4 @@
     - nginx
     - wireguard
     - firewall
+    - docker
