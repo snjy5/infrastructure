@@ -48,6 +48,9 @@
     mode: '0600'
   notify: Restart WireGuard
 
+- name: Force handlers to run immediately so we can test
+  ansible.builtin.meta: flush_handlers
+
 - name: Verify WireGuard interface link is UP
   ansible.builtin.command: ip link show wg0
   register: wg_interface_status
