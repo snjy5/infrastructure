@@ -1,4 +1,13 @@
 ---
+- name: Remove conflicting pre-installed container packages
+  ansible.builtin.apt:
+    name:
+      - containerd
+      - containerd.io
+      - docker-ce
+      - docker-ce-cli
+    state: absent
+
 - name: Install Docker and Docker Compose
   ansible.builtin.apt:
     name:
