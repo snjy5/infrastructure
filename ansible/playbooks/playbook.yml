@@ -13,3 +13,4 @@
   roles:
     - nginx
     - wireguard
+    - firewall
