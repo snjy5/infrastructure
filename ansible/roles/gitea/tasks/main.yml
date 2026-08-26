@@ -1,0 +1,17 @@
+---
+- name: Create Gitea deployment directory
+  ansible.builtin.file:
+    path: /opt/gitea
+    state: directory
+    mode: '0755'
+
+- name: Deploy Gitea docker-compose file
+  ansible.builtin.template:
+    src: docker-compose.yml.j2
+    dest: /opt/gitea/docker-compose.yml
+
+- name: Start Gitea container
+  ansible.builtin.command: docker-compose up -d
+  args:
+    chdir: /opt/gitea
+  changed_when: false
