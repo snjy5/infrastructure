@@ -5,5 +5,5 @@ wireguard_port: 51820
 
 wireguard_peers:
   - name: dummy_ci_client
-    public_key: just_a_placeholder_key_value
+    public_key: "xTIBA5rboUvnH4htodjb6e697QjLERt1NAB4mZqp8Dg="
     allowed_ips: 10.0.1.2/32
