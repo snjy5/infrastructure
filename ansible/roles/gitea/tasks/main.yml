@@ -11,7 +11,7 @@
     dest: /opt/gitea/docker-compose.yml
 
 - name: Start Gitea container
-  ansible.builtin.command: docker-compose up -d
+  ansible.builtin.command: docker compose up -d
   args:
     chdir: /opt/gitea
   changed_when: false
