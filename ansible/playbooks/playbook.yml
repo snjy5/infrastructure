@@ -16,3 +16,4 @@
     - firewall
     - docker
     - gitea
+    - mysql
