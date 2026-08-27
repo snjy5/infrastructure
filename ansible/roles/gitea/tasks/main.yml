@@ -10,9 +10,10 @@
     src: docker-compose.yml.j2
     dest: /opt/gitea/docker-compose.yml
 
-- name: Forcefully remove ghost Gitea container
-  ansible.builtin.command: docker rm -f gitea
-  failed_when: false
+- name: Nuke old Gitea container and network from orbit
+  ansible.builtin.shell: |
+    docker rm -f gitea || true
+    docker network rm gitea_default || true
   changed_when: false
 
 - name: Start Gitea container
