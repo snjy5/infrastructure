@@ -10,10 +10,8 @@
     src: docker-compose.yml.j2
     dest: /opt/gitea/docker-compose.yml
 
-- name: Stop existing Gitea container to prevent conflicts
-  ansible.builtin.command: docker compose down
-  args:
-    chdir: /opt/gitea
+- name: Forcefully remove ghost Gitea container
+  ansible.builtin.command: docker rm -f gitea
   failed_when: false
   changed_when: false
 
