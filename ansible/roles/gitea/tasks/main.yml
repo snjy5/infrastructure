@@ -5,6 +5,14 @@
     state: directory
     mode: '0755'
 
+- name: Create Gitea data volume directory with correct permissions
+  ansible.builtin.file:
+    path: /opt/gitea_data
+    state: directory
+    owner: 1000
+    group: 1000
+    mode: '0755'
+
 - name: Deploy Gitea docker-compose file
   ansible.builtin.template:
     src: docker-compose.yml.j2
