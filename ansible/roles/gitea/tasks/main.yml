@@ -1,11 +1,5 @@
 ---
-- name: Create Gitea deployment directory
-  ansible.builtin.file:
-    path: /opt/gitea
-    state: directory
-    mode: '0755'
-
-- name: Create Gitea data volume directory with correct permissions
+- name: Ensure Gitea data volume directory exists with correct permissions
   ansible.builtin.file:
     path: /opt/gitea_data
     state: directory
@@ -13,19 +7,23 @@
     group: 1000
     mode: '0755'
 
-- name: Deploy Gitea docker-compose file
-  ansible.builtin.template:
-    src: docker-compose.yml.j2
-    dest: /opt/gitea/docker-compose.yml
-
-- name: Nuke old Gitea container and network from orbit
-  ansible.builtin.shell: |
-    docker rm -f gitea || true
-    docker network rm gitea_default || true
-  changed_when: false
-
-- name: Start Gitea container
-  ansible.builtin.command: docker compose up -d
-  args:
-    chdir: /opt/gitea
-  changed_when: false
+- name: Deploy and manage Gitea container with Docker Compose
+  community.docker.docker_compose:
+    project_name: gitea
+    definition:
+      version: '3'
+      services:
+        gitea:
+          image: gitea/gitea:latest
+          container_name: gitea
+          environment:
+            - USER_UID=1000
+            - USER_GID=1000
+          restart: always
+          ports:
+            - "3000:3000"
+            - "222:22"
+          volumes:
+            - /opt/gitea_data:/data
+    state: present
+    recreate: always
