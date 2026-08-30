@@ -1,12 +1,16 @@
-myhosts:
-  hosts:
-    my_host_01:
-      ansible_host: 127.0.0.1
-      ansible_connection: local
+# Defines all production hosts grouped by function
+all:
+  children:
+    webservers:
+      hosts:
+        web01.example.com:
+          ansible_host: 127.0.0.1
+          ansible_connection: local
+          http_port: 80
 
-webservers:
-  hosts:
-    webserver01:
-      ansible_host: 127.0.0.1
-      ansible_connection: local
-      http_port: 80
+    generic:
+      hosts:
+        generic_01:
+          ansible_host: 127.0.0.1
+          ansible_connection: local
+
