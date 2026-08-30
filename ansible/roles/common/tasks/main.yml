@@ -1,6 +1,15 @@
 # roles/common/tasks/main.yml
 # Baseline configuration applied to every server
 ---
+- name: Set /etc/hosts from template
+  ansible.builtin.template:
+    src: templates/hosts.j2
+    dest: /etc/hosts
+    owner: root
+    group: root
+    mode: '0644'
+  become: true
+
 - name: Install essential packages
   ansible.builtin.apt:
     name:
@@ -13,3 +22,4 @@
     state: present
     update_cache: true
     cache_valid_time: 3600
+
