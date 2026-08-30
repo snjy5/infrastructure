@@ -7,10 +7,3 @@ all:
           ansible_host: 127.0.0.1
           ansible_connection: local
           http_port: 80
-
-    generic:
-      hosts:
-        generic_01:
-          ansible_host: 127.0.0.1
-          ansible_connection: local
-

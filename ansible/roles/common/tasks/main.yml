@@ -1,14 +1,6 @@
 # roles/common/tasks/main.yml
 # Baseline configuration applied to every server
 ---
-- name: Set hostname
-  ansible.builtin.hostname:
-    name: "{{ inventory_hostname }}"
-
-- name: Configure timezone
-  community.general.timezone:
-    name: "{{ timezone | default('UTC') }}"
-
 - name: Install essential packages
   ansible.builtin.apt:
     name:
@@ -21,30 +13,3 @@
     state: present
     update_cache: true
     cache_valid_time: 3600
-
-- name: Configure NTP
-  ansible.builtin.template:
-    src: ntp.conf.j2
-    dest: /etc/ntp.conf
-    owner: root
-    group: root
-    mode: '0644'
-  notify: restart ntp
-
-- name: Ensure NTP service is running
-  ansible.builtin.service:
-    name: ntp
-    state: started
-    enabled: true
-
-- name: Configure sysctl parameters
-  ansible.posix.sysctl:
-    name: "{{ item.key }}"
-    value: "{{ item.value }}"
-    sysctl_set: true
-    state: present
-    reload: true
-  loop:
-    - { key: 'net.core.somaxconn', value: '65535' }
-    - { key: 'vm.swappiness', value: '10' }
-    - { key: 'net.ipv4.tcp_max_syn_backlog', value: '65535' }
