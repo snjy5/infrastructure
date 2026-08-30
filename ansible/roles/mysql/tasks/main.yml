@@ -1,12 +1,12 @@
 ---
 - name: Install MySQL Server
   ansible.builtin.apt:
-    name: mysql
+    name: mariadb-server
     state: present
     update_cache: yes
 
 - name: Ensure MySQL service is running and enabled
   ansible.builtin.service:
-    name: mysql
+    name: mariadb
     state: started
     enabled: yes
