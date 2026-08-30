@@ -6,4 +6,4 @@ all:
         web01.example.com:
           ansible_host: 127.0.0.1
           ansible_connection: local
-          http_port: 80
+          http_port: 8080
