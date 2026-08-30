@@ -1,4 +1,17 @@
 ---
+- name: Install nginx package
+  ansible.builtin.apt:
+    name:
+      - nginx
+    state: present
+    update_cache: yes
+
+- name: Ensure nginx service is running and enabled
+  ansible.builtin.service:
+    name: nginx
+    state: started
+    enabled: yes
+
 - name: Deploy selected Nginx site configuration
   ansible.builtin.template:
     src: "{{ service_type }}.conf.j2"
