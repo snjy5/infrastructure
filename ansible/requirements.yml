@@ -1,0 +1,15 @@
+---
+collections:
+  # It's good practice to pin to a specific version
+  # Provides modules for system-level tasks like managing firewall rules (ufw).
+  - name: community.general
+    version: "8.5.0" 
+
+roles:
+  # Role to install and configure Docker and Docker Compose.
+  - name: geerlingguy.docker
+    version: "7.0.1" 
+
+  # Role to install and configure Nginx as the reverse proxy.
+  - name: geerlingguy.nginx
+    version: "4.1.1"

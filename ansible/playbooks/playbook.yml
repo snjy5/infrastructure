@@ -1,22 +1,50 @@
----
-- name: Apply baseline and security hardening
-  hosts: all
-  become: true
-  roles:
-    - common
-    - security
-    - firewall
+#
+# This playbook configures a base server for running containerized applications.
+# Its only jobs are to harden the OS, install Docker, and set up Nginx
+# as a reverse proxy.
+#
+# It should be run once after the server is provisioned by Terraform.
+#
+- hosts: all
+  become: true # Most of these tasks require root privileges
 
-- name: Deploy core runtime and networking
-  hosts: all
-  become: true
-  roles:
-    - docker
-    - wireguard
+  vars:
+    # --- Centralized Configuration ---
+    # Define your domain here once.
+    # In a real project, this would be stored in `ansible/inventory/group_vars/all/vars.yml`
+    # or passed in as an extra-var by the CI/CD pipeline.
+    main_domain: "yourdomain.com"
 
-- name: Deploy application workloads and proxy
-  hosts: all
-  become: true
+    # A list of service definitions. This makes adding new services clean and easy.
+    # We will manage these services with a docker-compose.yml file.
+    # The Nginx role will use this list to automatically create reverse proxy configs.
+    services:
+      - name: gitea
+        port: 3000
+      - name: newapp
+        port: 8080
+      # Add future services here, e.g.:
+      # - name: another-app
+      #   port: 9001
+
   roles:
-    - gitea
-    - nginx
+    # --- Base System Configuration ---
+    - role: common    # User accounts, packages, timezone, etc.
+    - role: security  # Basic security hardening (e.g., fail2ban)
+    - role: firewall  # Manages firewall rules (e.g., ufw)
+    - role: docker    # Installs Docker and Docker Compose
+
+    # --- Reverse Proxy Configuration ---
+    - role: geerlingguy.nginx
+      vars:
+        # Best practice: remove the default "Welcome to Nginx" page.
+        nginx_remove_default_vhost: true
+
+        # --- Dynamic Nginx Vhost Generation ---
+        # This is the powerful part. It automatically creates a reverse proxy
+        # config for every service listed in the `services` variable above.
+        # You no longer need to edit this file to add a new service's proxy.
+        nginx_vhosts: "{{ services | map('nginx_vhost', main_domain) | list }}"
+
+    # Application roles like 'gitea' and 'wireguard' are REMOVED from here.
+    # They will be managed as Docker containers via a docker-compose.yml file.

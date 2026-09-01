@@ -3,19 +3,38 @@ name: Production Deploy
 on:
   push:
     branches:
-      - main
+      - master
   workflow_dispatch:
 
 jobs:
   deploy:
+    name: Deploy to Production
     runs-on: ubuntu-latest
+    
+    # Environment variables available to all steps in this job
+    env:
+      # Set AWS credentials for Terraform
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      # Set the private key path for Ansible
+      ANSIBLE_SSH_PRIVATE_KEY_FILE: /home/runner/.ssh/id_ed25519_deploy
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Execute deployment script
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+      - name: Configure SSH Key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > $ANSIBLE_SSH_PRIVATE_KEY_FILE
+          chmod 600 $ANSIBLE_SSH_PRIVATE_KEY_FILE
+        # This ensures the key is only used when the secret is present
+        if: ${{ secrets.SSH_PRIVATE_KEY != '' }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.5.0 # Pinning the version is a good practice
+
+      - name: Execute Deployment Script
         run: ./ci-deploy.sh

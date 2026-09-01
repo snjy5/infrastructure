@@ -1,74 +1,160 @@
-# Infrastructure Automation Wiki & Operations Guide
+# Infrastructure Operations Guide
 
-This repository is designed as a modular toolkit. You can deploy the entire stack top-to-bottom, or rip out individual components to use in your own projects. Follow the standards below to maintain security and clean architecture when extending the codebase.
+This guide provides the standard operating procedures for deploying and extending the infrastructure. Follow these instructions precisely.
 
 ---
 
-## 1. Quick Start & Modular Execution
+## 1. Full System Deployment
 
-You do not have to deploy everything at once. The infrastructure is decoupled so you can run tools in isolation.
+Execute these steps in order to provision and configure the entire environment from scratch.
 
-### A. Provisioning Hardware (Terraform)
-To spin up the base AWS infrastructure (EC2 + Elastic IP) independently of the software configuration:
+**Step 1: Install Ansible Dependencies**
+```bash
+ansible-galaxy install -r ansible/requirements.yml
+```
+
+**Step 2: Provision Hardware (Terraform)**
 ```bash
 cd terraform/
 ./tf.sh apply
 ```
+After completion, copy the `public_ip` value from the Terraform output and update the `ansible_host` variable in `ansible/inventory/production.ini`.
 
-Note: If running manually, copy the output IP address and update ansible/inventory/production.ini before running Ansible.
-B. Running Ansible Roles in Isolation
-If you only want to update Nginx without touching Docker, Gitea, or WireGuard, you can execute a single role. (Note: To use this, append tags: ['role_name'] to the role definitions in your playbook.yml):
-# Run only the Nginx and Firewall configuration
-ansible-playbook -i ansible/inventory/production.ini ansible/playbooks/playbook.yml --tags "nginx,firewall"
+**Step 3: Configure Server & Deploy Services (Ansible)**
+```bash
+ansible-playbook -i ansible/inventory/production.ini ansible/playbooks/playbook.yml
+```
 
-C. Hacking & Customizing
-Treat this repository like a wiki. If you only want to extract the WireGuard VPN for a different server:
- * Delete the terraform/ directory.
- * Delete all roles in ansible/roles/ except wireguard and firewall.
- * Remove the deleted roles from ansible/playbooks/playbook.yml.
- * Update ansible/roles/wireguard/defaults/main.yml with your preferred subnets and run it against your own inventory.
-2. Core Development Standards
-If you are contributing or extending the permanent stack, these rules are mandatory:
- * Idempotency is Mandatory: Every task must be safely repeatable. Use creates, removes, or changed_when directives for shell commands to prevent them from executing on every run.
- * Service Restarts: Never use the service module inline to restart services after configuration changes. Always use notify: <Handler Name> and define the trigger in the role's handlers/main.yml.
- * Variable Management: Never hardcode IPs, domains, or credentials in tasks/main.yml. Define them in defaults/main.yml and override them in ansible/inventory/production.ini or an encrypted Ansible Vault.
- * Local Binding: Any newly containerized service must bind its exposed ports strictly to 127.0.0.1 (e.g., Gitea mapping to 127.0.0.1:3000). Never expose backend application ports directly to the public internet.
-3. Adding a New Service (Step-by-Step)
-To deploy a new application (e.g., a Node.js backend, a monitoring stack, or a new database), follow this exact flow:
- * Create the Role:
-   Run ansible-galaxy role init ansible/roles/<new_service> to generate the standard directory structure.
- * Write the Deployment Tasks:
-   Use the community.docker.docker_compose_v2 module for containerized workloads. Ensure volume paths map to persistent directories on the host (e.g., /opt/<new_service>_data).
- * Expose via Nginx (Reverse Proxy):
-   Do not open the application's port in the firewall. Instead, update the Nginx configuration template (ansible/roles/nginx/templates/proxy_loadbalancer.conf.j2) by adding a new upstream block pointing to your 127.0.0.1:<port> and a corresponding location routing block.
- * Register the Role:
-   Append your new role to the application deployment section within the master orchestration file, ansible/playbooks/playbook.yml.
-4. Modifying the Firewall
-All ingress traffic is blocked by default via UFW. If you must add a new public-facing service that bypasses Nginx (e.g., a new VPN protocol or game server):
- * Do not write custom shell commands for iptables or ufw inside your new role.
- * Open ansible/roles/firewall/defaults/main.yml.
- * Append your new port and protocol to the existing firewall_allowed_ports dictionary list.
-5. Pre-Deployment Validation
-Before committing changes or deploying to the permanent host, validate your code:
-# Verify playbook syntax and YAML formatting
-ansible-playbook -i ansible/inventory/production.ini ansible/playbooks/playbook.yml --syntax-check
+---
 
-# Perform a dry-run execution to review pending state changes safely
-ansible-playbook -i ansible/inventory/production.ini ansible/playbooks/playbook.yml --check --diff
+## 2. Adding a New Service
 
-## 5. CI/CD Secret Management (GitHub Actions)
+Follow this exact workflow to integrate a new application. The preferred method is to use a pre-existing, well-maintained community role.
 
-To automate deployments via GitHub Actions, your pipeline requires access to your AWS credentials and server SSH key. 
+#### **Step 1: Add the Ansible Role**
 
-**Prerequisite Expectation:** You should already have your standard AWS variables (`AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`) exported in your current shell environment, as this is required to run Terraform locally.
+**Option A: Use a Community Role (Preferred)**
 
-Use the GitHub CLI (`gh`) to strictly push your existing local environment state up to your repository secrets:
+1.  Add the role to `ansible/requirements.yml`.
+
+    ```yaml
+    # ansible/requirements.yml
+    - src: geerlingguy.redis
+    ```
+
+2.  Install it.
+    ```bash
+    ansible-galaxy install -r ansible/requirements.yml
+    ```
+
+**Option B: Create a New Custom Role**
+
+Only do this if a suitable community role does not exist.
+
+1.  Create the role structure.
+    ```bash
+    ansible-galaxy role init ansible/roles/newapp
+    ```
+
+2.  Write your tasks in `ansible/roles/newapp/tasks/main.yml`. Use the `community.docker.docker_compose_v2` module for containerized services.
+
+    ```yaml
+    # ansible/roles/newapp/tasks/main.yml
+    - name: Ensure newapp directory exists
+      ansible.builtin.file:
+        path: /opt/newapp
+        state: directory
+        mode: '0755'
+
+    - name: Deploy newapp container
+      community.docker.docker_compose_v2:
+        project_src: /opt/newapp
+        definition:
+          services:
+            newapp:
+              image: newapp:latest
+              restart: unless-stopped
+              ports:
+                - "127.0.0.1:8080:80" # MUST bind to 127.0.0.1
+              volumes:
+                - /opt/newapp/data:/data
+    ```
+
+#### **Step 2: Enable and Configure the Role in the Master Playbook**
+
+Add the new role to the end of `ansible/playbooks/playbook.yml`. For community roles, define all configuration variables directly under the role definition to ensure they are properly scoped.
+
+```yaml
+# ansible/playbooks/playbook.yml
+...
+  roles:
+    - role: common
+    - role: security
+    - role: firewall
+    - role: docker
+    - role: nginx
+    - role: gitea
+    - role: wireguard
+
+    # --- ADD NEW ROLES BELOW THIS LINE ---
+
+    - role: geerlingguy.redis
+      vars:
+        redis_bind_interface: 127.0.0.1 # Enforce local binding
+
+    - role: newapp
+```
+
+#### **Step 3: Expose the Service via Nginx Reverse Proxy**
+
+Do not open the application's port in the firewall. All web traffic is routed through Nginx.
+
+ Edit the master playbook `ansible/playbooks/playbook.yml` and add a new item to the `nginx_vhosts` list within the `geerlingguy.nginx` role definition.
+
+```yaml
+ # ansible/playbooks/playbook.yml
+ # ...
+     - role: geerlingguy.nginx
+       vars:
+         nginx_remove_default_vhost: true
+         nginx_vhosts:
+           # ... existing service blocks ...
+
+           # --- Add your new service's proxy config here ---
+           - listen: "80"
+             server_name: "newapp.yourdomain.com"
+             proxy_pass: "http://127.0.0.1:8080"
+             proxy_set_headers:
+               - "Host $host"
+               - "X-Real-IP $remote_addr"
+               - "X-Forwarded-For $proxy_add_x_forwarded_for"
+               - "X-Forwarded-Proto $scheme"
+ # ...
+```
+
+---
+
+## 3. Core Development Standards
+
+These rules are mandatory and non-negotiable.
+
+1.  **No Public Container Ports**: Backend application ports must **never** be exposed directly to the internet. Containers must bind strictly to `127.0.0.1` and be routed through the Nginx reverse proxy.
+2.  **Centralized Firewall Management**: Do not write custom `iptables` or `ufw` commands in your roles. To open a port for a non-HTTP service (e.g., a game server), append it to the `firewall_allowed_ports` list in `ansible/roles/firewall/defaults/main.yml`.
+3.  **Use Handlers for Service Restarts**: Never use the `service` module to restart services directly in `tasks/main.yml`. You **must** use `notify: <Handler Name>` and define the restart logic in the role's `handlers/main.yml`.
+4.  **No Hardcoded Variables**: Never hardcode IPs, domains, or passwords in tasks or templates. Define them in `defaults/main.yml` and override them via inventory variables or an encrypted Ansible Vault.
+5.  **Strict Idempotency**: Every Ansible run must be safely repeatable. A second run must result in `changed=0` for all tasks. Use modules that manage state or employ `creates`, `removes`, or `changed_when` directives for all shell commands.
+
+---
+
+## 4. CI/CD Secret Management
+
+Automated deployments via GitHub Actions require your AWS and SSH credentials. Push your local environment state to the repository secrets using the GitHub CLI.
 
 ```bash
-# Push existing AWS credentials to GitHub secrets
+# Push AWS credentials from your local environment
 echo "$AWS_ACCESS_KEY_ID" | gh secret set AWS_ACCESS_KEY_ID
 echo "$AWS_SECRET_ACCESS_KEY" | gh secret set AWS_SECRET_ACCESS_KEY
 
-# Push SSH private key directly from the local file (preserves multiline formatting)
+# Push the SSH private key from its file
 gh secret set SSH_PRIVATE_KEY < ~/.ssh/id_ed25519
 ```
