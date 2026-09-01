@@ -3,7 +3,7 @@ name: Production Deploy
 on:
   push:
     branches:
-      - master
+      - master # Changed to master to match your file
   workflow_dispatch:
 
 jobs:
@@ -13,28 +13,37 @@ jobs:
     
     # Environment variables available to all steps in this job
     env:
-      # Set AWS credentials for Terraform
       AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-      # Set the private key path for Ansible
       ANSIBLE_SSH_PRIVATE_KEY_FILE: /home/runner/.ssh/id_ed25519_deploy
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Install Ansible
+        # ubuntu-latest has ansible, but it's best to ensure it's up to date
+        run: sudo apt-get update && sudo apt-get install -y ansible
+
       - name: Configure SSH Key
+        # 1. Map the secret to an environment variable for this step only
+        env:
+          SSH_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+        # 2. Check the environment variable, not the secret directly
+        if: ${{ env.SSH_KEY != '' }}
         run: |
           mkdir -p ~/.ssh
-          echo "${{ secrets.SSH_PRIVATE_KEY }}" > $ANSIBLE_SSH_PRIVATE_KEY_FILE
+          # 3. Safely write the multiline variable to the file
+          echo "$SSH_KEY" > $ANSIBLE_SSH_PRIVATE_KEY_FILE
           chmod 600 $ANSIBLE_SSH_PRIVATE_KEY_FILE
-        # This ensures the key is only used when the secret is present
-        if: ${{ secrets.SSH_PRIVATE_KEY != '' }}
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
         with:
-          terraform_version: 1.5.0 # Pinning the version is a good practice
+          terraform_version: 1.5.0
 
       - name: Execute Deployment Script
-        run: ./ci-deploy.sh
+        run: |
+          # Ensure the script is executable before running it
+          chmod +x ./ci-deploy.sh
+          ./ci-deploy.sh
