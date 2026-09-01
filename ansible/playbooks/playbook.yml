@@ -1,38 +1,22 @@
-# Master playbook that applies all infrastructure configuration
 ---
-- name: Apply common configuration to all hosts
+- name: Apply baseline and security hardening
   hosts: all
   become: true
   roles:
     - common
+    - security
     - firewall
 
-- name: Configure web servers
-  hosts: all
-  become: true
-  roles:
-    - nginx
-
-- name: Configure database servers
-  hosts: all
-  become: true
-  roles:
-    - mysql
-
-- name: Deploy VPN
-  hosts: all
-  become: true
-  roles:
-    - wireguard
-
-- name: Configure docker
+- name: Deploy core runtime and networking
   hosts: all
   become: true
   roles:
     - docker
+    - wireguard
 
-- name: Deploy git server
+- name: Deploy application workloads and proxy
   hosts: all
   become: true
   roles:
     - gitea
+    - nginx

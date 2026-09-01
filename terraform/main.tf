@@ -1,4 +1,19 @@
 terraform {
+  terraform {
+    backend "s3" {
+      bucket = "my-own-nice-portfolio-tf-state" # Must be a globally unique name
+      key    = "prod/terraform.tfstate"
+      region = "us-east-1"
+    }
+
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 5.0"
+    }
+  }
+}
+
   required_providers {
     aws = {
       source  = "hashicorp/aws"
@@ -44,27 +59,35 @@ data "aws_ami" "debian" {
   }
 }
 
-# 3. Security Group 
+# Web hosting
 resource "aws_security_group" "web_sg" {
-  name        = "web_sg"
-  description = "Allow SSH and HTTP inbound traffic"
+  name        = "portfolio_sg"
+  description = "Allow SSH, HTTP, HTTPS, and WireGuard"
 
   ingress {
-    description = "SSH"
     from_port   = 22
     to_port     = 22
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
-
   ingress {
-    description = "HTTP"
     from_port   = 80
     to_port     = 80
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
-
+  ingress {
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+  ingress {
+    from_port   = 51820
+    to_port     = 51820
+    protocol    = "udp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
   egress {
     from_port   = 0
     to_port     = 0
@@ -73,54 +96,29 @@ resource "aws_security_group" "web_sg" {
   }
 }
 
-# 4. EC2 Instance
 resource "aws_instance" "web" {
-  ami                         = data.aws_ami.debian.id
-  instance_type               = "t3.micro" 
-  key_name                    = aws_key_pair.deployer.key_name
-  vpc_security_group_ids      = [aws_security_group.web_sg.id]
-  associate_public_ip_address = true
+  ami                    = data.aws_ami.debian.id
+  instance_type          = "t3.micro" 
+  key_name               = aws_key_pair.deployer.key_name
+  vpc_security_group_ids = [aws_security_group.web_sg.id]
   
-  # user_data is much safer and cleaner than remote-exec
-  user_data = <<-EOF
-              #!/bin/bash
-              # Wait for potential boot-time apt locks to clear
-              while fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1; do sleep 5; done;
-              
-              apt-get update -y
-              DEBIAN_FRONTEND=noninteractive apt-get install -y git ansible
-              
-              # Run as the default admin user rather than root
-              su - admin -c "git clone --depth=1 https://github.com/snjy5/infrastructure /home/admin/infrastructure"
-              cd /home/admin/infrastructure
-              bash ansible.sh
-              EOF
-
-  # Connection block required for remote-exec to function properly
-  connection {
-    type        = "ssh"
-    user        = "admin" # Default user for official Debian AMIs
-    private_key = file("~/.ssh/id_ed25519") # Assuming this based on your local-exec command
-    host        = self.public_ip
+  # Protect your permanent server from `terraform destroy`
+  lifecycle {
+    prevent_destroy = true
   }
 
-  # 1. Wait for the background script to finish and prepare the log
-  provisioner "remote-exec" {
-    inline = [
-      "cloud-init status --wait",
-      "sudo cp /var/log/cloud-init-output.log /home/admin/deploy.log",
-      "sudo chown admin:admin /home/admin/deploy.log"
-    ]
-  }
-
-  # 2. Download the log file directly to your local device using scp
-  provisioner "local-exec" {
-    command = "scp -o StrictHostKeyChecking=no -i ~/.ssh/id_ed25519 admin@${self.public_ip}:/home/admin/deploy.log ./ec2-deploy.log"
-  }
-
-  # Tags are optional but highly recommended
   tags = {
     Name = "Debian-Web-Server"
   }
 }
 
+# Assign a permanent static IP
+resource "aws_eip" "web_eip" {
+  instance = aws_instance.web.id
+  domain   = "vpc"
+}
+
+# Output the IP to use in your Ansible inventory
+output "server_public_ip" {
+  value = aws_eip.web_eip.public_ip
+}

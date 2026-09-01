@@ -3,5 +3,4 @@ firewall_allowed_ports:
   - { port: '22', proto: 'tcp' }
   - { port: '80', proto: 'tcp' }
   - { port: '443', proto: 'tcp' }
-  - { port: '3000', proto: 'tcp' }
   - { port: '51820', proto: 'udp' }

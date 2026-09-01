@@ -1,5 +1,5 @@
 ---
-- name: Ensure Gitea data volume directory exists with correct permissions
+- name: Ensure Gitea data volume directory exists
   ansible.builtin.file:
     path: /opt/gitea_data
     state: directory
@@ -7,11 +7,10 @@
     group: 1000
     mode: '0755'
 
-- name: Deploy and manage Gitea container with Docker Compose
-  community.docker.docker_compose:
+- name: Deploy Gitea container via Docker Compose
+  community.docker.docker_compose_v2:
     project_name: gitea
     definition:
-      version: '3'
       services:
         gitea:
           image: gitea/gitea:latest
@@ -21,9 +20,8 @@
             - USER_GID=1000
           restart: always
           ports:
-            - "3000:3000"
-            - "222:22"
+            - "127.0.0.1:3000:3000"
+            - "127.0.0.1:222:22"
           volumes:
             - /opt/gitea_data:/data
     state: present
-    recreate: always

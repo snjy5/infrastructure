@@ -1,3 +1,4 @@
+---
 collections:
   - name: ansible.posix
     version: 1.5.1
@@ -5,3 +6,7 @@ collections:
     version: 6.4.0
   - name: community.crypto
     version: 2.11.0
+roles:
+  - name: geerlingguy.docker
+  - name: geerlingguy.mysql
+  - name: geerlingguy.nginx

@@ -1,0 +1,38 @@
+upstream portfolio_backend {
+    # If scaling multiple container instances, add extra server lines here
+    server 127.0.0.1:8080;
+}
+
+upstream gitea_backend {
+    server 127.0.0.1:3000;
+}
+
+server {
+    listen 80;
+    server_name _;
+
+    # Security Headers
+    add_header X-Frame-Options "SAMEORIGIN" always;
+    add_header X-XSS-Protection "1; mode=block" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header Referrer-Policy "no-referrer-when-downgrade" always;
+
+    # Gitea Git Proxy
+    location /git/ {
+        proxy_pass http://gitea_backend/;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # Portfolio Root & Asset Load Balancer Proxy
+    location / {
+        proxy_pass http://portfolio_backend;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+
