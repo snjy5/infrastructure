@@ -28,16 +28,15 @@ jobs:
       - name: Configure SSH Key
         env:
           SSH_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
-        if: ${{ env.SSH_KEY != '' }}
         run: |
+          if [ -z "$SSH_KEY" ]; then
+            echo "::error::SSH_PRIVATE_KEY secret is empty or missing!"
+            exit 1
+          fi
           mkdir -p ~/.ssh
-          
-          # 1. Write the private key
           echo "$SSH_KEY" > $ANSIBLE_SSH_PRIVATE_KEY_FILE
           chmod 600 $ANSIBLE_SSH_PRIVATE_KEY_FILE
-          
-          # 2. Extract and write the public key so Terraform can find it!
-          ssh-keygen -y -f $ANSIBLE_SSH_PRIVATE_KEY_FILE > ~/.ssh/id_ed25519.pub
+          ssh-keygen -y -f $ANSIBLE_SSH_PRIVATE_KEY_FILE > ~/.ssh/id_ed25519_deploy.pub
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
