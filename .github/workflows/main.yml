@@ -6,6 +6,11 @@ on:
       - master
   workflow_dispatch:
 
+env:
+  VAULT_PASSWORD: ${{ secrets.VAULT_PASSWORD }}
+  ANSIBLE_HOST_KEY_CHECKING: "False"
+  ANSIBLE_CONFIG: ansible.cfg
+
 jobs:
   deploy:
     name: Deploy to Production
@@ -28,11 +33,7 @@ jobs:
         run: |
           ansible-galaxy install -r ansible/requirements.yml
 
-      - name: Execute Master Orchestrator
-        env:
-          VAULT_PASSWORD: ${{ secrets.VAULT_PASSWORD }}
-          ANSIBLE_HOST_KEY_CHECKING: "False"
-          ANSIBLE_CONFIG: ansible.cfg
+      - name: Localhost
         run: |
           if [ -z "$VAULT_PASSWORD" ]; then
             echo "::error::VAULT_PASSWORD secret is empty or missing!"
@@ -43,3 +44,10 @@ jobs:
             -i ansible/inventory/local.ini \
             --vault-password-file <(echo "$VAULT_PASSWORD") \
             ansible/playbooks/orchestrate.yml
+
+      - name: Production
+        run: |
+          ansible-playbook \
+            -i ansible/inventory/production.ini \
+            --vault-password-file <(echo "$VAULT_PASSWORD") \
+            ansible/playbooks/playbook.yml
