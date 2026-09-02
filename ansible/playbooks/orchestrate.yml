@@ -35,23 +35,32 @@
         AWS_SECRET_ACCESS_KEY: "{{ vault_aws_secret_access_key }}"
       register: terraform_result
 
-    - name: Get Terraform outputs
-      community.general.terraform_output:
-        project_path: "{{ playbook_dir }}/../../terraform"
-      register: tf_outputs
+    - name: Get Terraform outputs (server_public_ip)
+      shell:
+        cmd: |
+          cd "{{ playbook_dir }}/../../terraform"
+          terraform output -raw server_public_ip 2>/dev/null || echo ""
+      register: tf_output
+      changed_when: false
 
-    - name: Debug - Show Terraform outputs
+    - name: Debug - Show Terraform output
       debug:
-        var: tf_outputs
+        msg: "Server IP: {{ tf_output.stdout }}"
+      when: tf_output.stdout != ""
 
     - name: Add host to webservers group dynamically
       add_host:
-        name: "{{ tf_outputs.outputs.server_public_ip.value }}"
+        name: "{{ tf_output.stdout }}"
         groups: webservers
         ansible_user: admin
         ansible_ssh_private_key_file: ~/.ssh/id_ed25519_deploy
         ansible_python_interpreter: /usr/bin/python3
-      when: tf_outputs.outputs.server_public_ip.value is defined
+      when: tf_output.stdout != ""
+
+    - name: Fail if no IP address found
+      fail:
+        msg: "No server IP address found from Terraform output!"
+      when: tf_output.stdout == ""
 
 # STAGE 2: Server Configuration & App Deployment
 - import_playbook: playbook.yml
