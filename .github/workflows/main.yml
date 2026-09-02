@@ -20,9 +20,7 @@ jobs:
 
       - name: Install Galaxy dependencies
         run: |
-          ansible-galaxy install -r ansible/requirements.yml \
-            --roles-path ./roles \
-            --collections-path ./collections
+          ansible-galaxy install -r ansible/requirements.yml
 
       - name: Execute Master Orchestrator
         env:
