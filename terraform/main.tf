@@ -39,7 +39,7 @@ variable "ansible_user" {
 # This resource uploads your public key to AWS, allowing you to SSH into the instance.
 resource "aws_key_pair" "deployer" {
   key_name   = "deployer-key"
-  public_key = file(var.public_key_path)
+  public_key = file(pathexpand(var.public_key_path)) 
 }
 
 # 2. Debian 12 AMI Data Source
