@@ -37,14 +37,43 @@
     # --- Reverse Proxy Configuration ---
     - role: geerlingguy.nginx
       vars:
-        # Best practice: remove the default "Welcome to Nginx" page.
         nginx_remove_default_vhost: true
+        # This built-in loop automatically builds the config for every app in your 'services' list!
+        nginx_vhosts: >-
+          {% set vhosts = [] %}
+          {% for app in services %}
+          {%   set _ = vhosts.append({
+                 'listen': '80',
+                 'server_name': app.name ~ '.' ~ main_domain,
+                 'proxy_pass': 'http://127.0.0.1:' ~ app.port,
+                 'proxy_set_headers': [
+                   'Host $host',
+                   'X-Real-IP $remote_addr',
+                   'X-Forwarded-For $proxy_add_x_forwarded_for',
+                   'X-Forwarded-Proto $scheme'
+                 ]
+               })
+          %}
+          {% endfor %}
+          {{ vhosts }}
 
-        # --- Dynamic Nginx Vhost Generation ---
-        # This is the powerful part. It automatically creates a reverse proxy
-        # config for every service listed in the `services` variable above.
-        # You no longer need to edit this file to add a new service's proxy.
-        nginx_vhosts: "{{ services | map('nginx_vhost', main_domain) | list }}"
+  # Setup docker compose
+  tasks:
+    - name: Ensure application directory exists on server
+      ansible.builtin.file:
+        path: /opt/app
+        state: directory
+        mode: '0755'
 
-    # Application roles like 'gitea' and 'wireguard' are REMOVED from here.
-    # They will be managed as Docker containers via a docker-compose.yml file.
+    - name: Copy docker-compose.yml to server
+      ansible.builtin.copy:
+        # playbook_dir is ansible/playbooks, so we go up two levels to the root
+        src: "{{ playbook_dir }}/../../docker-compose.yml" 
+        dest: /opt/app/docker-compose.yml
+        mode: '0644'
+
+    - name: Deploy applications via Docker Compose
+      community.docker.docker_compose_v2:
+        project_src: /opt/app
+        state: present
+        remove_orphans: true
