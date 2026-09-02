@@ -33,7 +33,7 @@ jobs:
         run: |
           ansible-galaxy install -r ansible/requirements.yml
 
-      - name: Localhost
+      - name: Terraform and ssh setup
         run: |
           if [ -z "$VAULT_PASSWORD" ]; then
             echo "::error::VAULT_PASSWORD secret is empty or missing!"
@@ -45,7 +45,14 @@ jobs:
             --vault-password-file <(echo "$VAULT_PASSWORD") \
             ansible/playbooks/orchestrate.yml
 
-      - name: Production
+      - name: Infra testing by local deploy
+        run: |
+          ansible-playbook \
+            -i ansible/inventory/local.ini \
+            --vault-password-file <(echo "$VAULT_PASSWORD") \
+            ansible/playbooks/playbook.yml
+
+      - name: Production Deploy
         run: |
           ansible-playbook \
             -i ansible/inventory/production.ini \

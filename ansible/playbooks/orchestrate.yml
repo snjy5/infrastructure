@@ -59,6 +59,3 @@
           No server IP address found from Terraform output!
           Available outputs: {{ terraform_result.outputs.keys() | list | default([]) }}
       when: server_ip == ""
-
-# STAGE 2: Server Configuration & App Deployment
-- import_playbook: playbook.yml

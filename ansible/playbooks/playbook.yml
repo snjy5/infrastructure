@@ -17,7 +17,10 @@
         port: 8080
 
   roles:
+    - role: common
+    - role: firewall
     - role: nginxinc.nginx
+    - role: geerlingguy.docker
       vars:
         nginx_remove_default_vhost: true
         _vhosts_json: >-
