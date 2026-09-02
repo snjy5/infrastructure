@@ -34,8 +34,4 @@ jobs:
             exit 1
           fi
 
-          ansible-playbook \
-            -i ansible/inventory/local.ini \
-            -i ansible/inventory/production.ini \
-            --vault-password-file <(echo "$VAULT_PASSWORD") \
-            ansible/playbooks/ci.yml
+          ansible-playbook -i ansible/inventory/local.ini --vault-password-file <(echo "$VAULT_PASSWORD") ansible/playbooks/ci.yml
