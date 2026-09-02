@@ -26,16 +26,18 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y ansible
 
       - name: Configure SSH Key
-        # 1. Map the secret to an environment variable for this step only
         env:
           SSH_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
-        # 2. Check the environment variable, not the secret directly
         if: ${{ env.SSH_KEY != '' }}
         run: |
           mkdir -p ~/.ssh
-          # 3. Safely write the multiline variable to the file
+          
+          # 1. Write the private key
           echo "$SSH_KEY" > $ANSIBLE_SSH_PRIVATE_KEY_FILE
           chmod 600 $ANSIBLE_SSH_PRIVATE_KEY_FILE
+          
+          # 2. Extract and write the public key so Terraform can find it!
+          ssh-keygen -y -f $ANSIBLE_SSH_PRIVATE_KEY_FILE > ~/.ssh/id_ed25519.pub
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
