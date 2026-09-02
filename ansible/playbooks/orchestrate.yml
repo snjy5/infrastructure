@@ -9,19 +9,19 @@
 
   tasks:
     - name: Ensure .ssh directory exists on the CI runner
-      file:
+      ansible.builtin.file:
         path: ~/.ssh
         state: directory
         mode: '0700'
 
     - name: Write SSH Private Key from Vault to disk
-      copy:
+      ansible.builtin.copy:
         content: "{{ vault_ssh_private_key }}"
         dest: ~/.ssh/id_ed25519_deploy
         mode: '0600'
 
     - name: Extract Public Key from Private Key for Terraform
-      shell:
+      ansible.builtin.shell:
         cmd: ssh-keygen -y -f ~/.ssh/id_ed25519_deploy > ~/.ssh/id_ed25519_deploy.pub
       changed_when: false
 
@@ -35,32 +35,30 @@
         AWS_SECRET_ACCESS_KEY: "{{ vault_aws_secret_access_key }}"
       register: terraform_result
 
-    - name: Get Terraform outputs (server_public_ip)
-      shell:
-        cmd: |
-          cd "{{ playbook_dir }}/../../terraform"
-          terraform output -raw server_public_ip 2>/dev/null || echo ""
-      register: tf_output
-      changed_when: false
+    - name: Extract server IP from Terraform module outputs
+      ansible.builtin.set_fact:
+        server_ip: "{{ terraform_result.outputs.server_public_ip.value | default('') | trim }}"
 
     - name: Debug - Show Terraform output
-      debug:
-        msg: "Server IP: {{ tf_output.stdout }}"
-      when: tf_output.stdout != ""
+      ansible.builtin.debug:
+        msg: "Server IP: {{ server_ip }}"
+      when: server_ip != ""
 
     - name: Add host to webservers group dynamically
-      add_host:
-        name: "{{ tf_output.stdout }}"
+      ansible.builtin.add_host:
+        name: "{{ server_ip }}"
         groups: webservers
         ansible_user: admin
         ansible_ssh_private_key_file: ~/.ssh/id_ed25519_deploy
         ansible_python_interpreter: /usr/bin/python3
-      when: tf_output.stdout != ""
+      when: server_ip != ""
 
     - name: Fail if no IP address found
-      fail:
-        msg: "No server IP address found from Terraform output!"
-      when: tf_output.stdout == ""
+      ansible.builtin.fail:
+        msg: >-
+          No server IP address found from Terraform output!
+          Available outputs: {{ terraform_result.outputs.keys() | list | default([]) }}
+      when: server_ip == ""
 
 # STAGE 2: Server Configuration & App Deployment
 - import_playbook: playbook.yml
