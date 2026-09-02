@@ -1,5 +1,4 @@
 ---
-# Play 1: Install Galaxy dependencies
 - name: Install Ansible Galaxy dependencies
   hosts: localhost
   connection: local
@@ -7,9 +6,8 @@
   tasks:
     - name: Install collections and roles from requirements.yml
       command:
-        cmd: ansible-galaxy install -r "{{ playbook_dir }}/../requirements.yml"
+        cmd: ansible-galaxy install -r requirements.yml
+        chdir: "{{ playbook_dir }}/.."   # ← Change to project root
       changed_when: false
-      register: galaxy_install
 
-# Play 2: Run the real orchestration playbook
 - import_playbook: orchestrate.yml
