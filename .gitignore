@@ -5,9 +5,6 @@ terraform/ec2-deploy.log
 terraform/.terraform/
 terraform/.terraform.lock.hcl
 
-# terraform generates it
-ansible/inventory/production.ini 
-
 # secrets for ansible-vault, just being thorough
 secrets
 secrets/
