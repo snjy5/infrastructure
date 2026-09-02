@@ -40,3 +40,7 @@
 
 # STAGE 2: Server Configuration & App Deployment
 - import_playbook: playbook.yml
+  vars:
+    # Pass the decrypted secrets from the vault down to the next playbook
+    vault_gitea_db_password: "{{ vault_gitea_db_password }}"
+    vault_mysql_root_password: "{{ vault_mysql_root_password }}"
