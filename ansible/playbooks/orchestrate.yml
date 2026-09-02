@@ -9,19 +9,19 @@
 
   tasks:
     - name: Ensure .ssh directory exists on the CI runner
-      ansible.builtin.file:
+      file:
         path: ~/.ssh
         state: directory
         mode: '0700'
 
     - name: Write SSH Private Key from Vault to disk
-      ansible.builtin.copy:
+      copy:
         content: "{{ vault_ssh_private_key }}"
         dest: ~/.ssh/id_ed25519_deploy
         mode: '0600'
 
     - name: Extract Public Key from Private Key for Terraform
-      ansible.builtin.shell:
+      shell:
         cmd: ssh-keygen -y -f ~/.ssh/id_ed25519_deploy > ~/.ssh/id_ed25519_deploy.pub
       changed_when: false
 
@@ -35,8 +35,7 @@
         AWS_SECRET_ACCESS_KEY: "{{ vault_aws_secret_access_key }}"
 
     - name: Refresh inventory to pick up the newly generated production.ini
-      ansible.builtin.meta: refresh_inventory
+      meta: refresh_inventory
 
-
-    - name: Deploy applications to production
-      import_playbook: playbook.yml
+# STAGE 2: Server Configuration & App Deployment
+- import_playbook: playbook.yml
