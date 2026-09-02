@@ -3,6 +3,10 @@ terraform/*.tfstate.backup
 terraform/*.log
 terraform/ec2-deploy.log
 terraform/.terraform/
+terraform/.terraform.lock.hcl
+
+# terraform generates it
+ansible/inventory/production.ini 
 
 # Ansible backups
 **/*.bak

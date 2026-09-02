@@ -1,9 +1,0 @@
-# Defines all production hosts grouped by function
-all:
-  children:
-    webservers:
-      hosts:
-        web01.example.com:
-          ansible_host: 127.0.0.1
-          ansible_connection: local
-          http_port: 8080
