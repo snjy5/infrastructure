@@ -38,6 +38,5 @@
       ansible.builtin.meta: refresh_inventory
 
 
-# STAGE 2: Server Configuration & App Deployment
-- name: Configure Server and Deploy Applications
-  import_playbook: playbook.yml
+    - name: Deploy applications to production
+      import_playbook: playbook.yml
