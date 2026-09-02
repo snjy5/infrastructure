@@ -32,7 +32,7 @@
     - role: common    # User accounts, packages, timezone, etc.
     - role: security  # Basic security hardening (e.g., fail2ban)
     - role: firewall  # Manages firewall rules (e.g., ufw)
-    - role: docker    # Installs Docker and Docker Compose
+    - role: geerlingguy.docker    # Installs Docker and Docker Compose
 
     # --- Reverse Proxy Configuration ---
     - role: geerlingguy.nginx
