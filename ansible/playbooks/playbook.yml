@@ -38,14 +38,15 @@
     - role: geerlingguy.nginx
       vars:
         nginx_remove_default_vhost: true
-        # This built-in loop automatically builds the config for every app in your 'services' list!
-        nginx_vhosts: >-
+        
+        # 1. Generate the config as a JSON string
+        _vhosts_json: >-
           {% set vhosts = [] %}
           {% for app in services %}
           {%   set _ = vhosts.append({
                  'listen': '80',
                  'server_name': app.name ~ '.' ~ main_domain,
-                 'proxy_pass': 'http://127.0.0.1:' ~ app.port,
+                 'proxy_pass': 'http://127.0.0.1:' ~ app.port|string,
                  'proxy_set_headers': [
                    'Host $host',
                    'X-Real-IP $remote_addr',
@@ -55,7 +56,10 @@
                })
           %}
           {% endfor %}
-          {{ vhosts }}
+          {{ vhosts | to_json }}
+          
+        # 2. Parse the JSON string back into a real Ansible list!
+        nginx_vhosts: "{{ _vhosts_json | from_json }}"
 
   # Setup docker compose
   tasks:
