@@ -18,10 +18,17 @@ jobs:
       - name: Install Ansible
         run: sudo apt-get update && sudo apt-get install -y ansible
 
+      - name: Install Galaxy dependencies
+        run: |
+          ansible-galaxy install -r ansible/requirements.yml \
+            --roles-path ./roles \
+            --collections-path ./collections
+
       - name: Execute Master Orchestrator
         env:
           VAULT_PASSWORD: ${{ secrets.VAULT_PASSWORD }}
           ANSIBLE_HOST_KEY_CHECKING: "False"
+          ANSIBLE_CONFIG: ansible.cfg
         run: |
           if [ -z "$VAULT_PASSWORD" ]; then
             echo "::error::VAULT_PASSWORD secret is empty or missing!"
@@ -31,4 +38,4 @@ jobs:
           ansible-playbook \
             -i ansible/inventory/local.ini \
             --vault-password-file <(echo "$VAULT_PASSWORD") \
-            ansible/playbooks/ci.yml
+            ansible/playbooks/orchestrate.yml
