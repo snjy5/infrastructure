@@ -1,17 +1,4 @@
-name: Production Deploy
-
-on:
-  push:
-    branches:
-      - master
-  workflow_dispatch:
-
-jobs:
-  deploy:
-    name: Deploy to Production
-    runs-on: ubuntu-latest
-
-    steps:
+steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
@@ -22,23 +9,18 @@ jobs:
         uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: 1.5.0
-          # Required so Ansible can read Terraform's raw output
           terraform_wrapper: false 
 
       - name: Install Ansible Dependencies
         run: ansible-galaxy install -r ansible/requirements.yml
 
-      - name: Configure Ansible Vault Password
-        env:
-          VAULT_PASS: ${{ secrets.VAULT_PASSWORD }}
-        run: |
-          echo "$VAULT_PASS" > /home/runner/.vault_pass
-          chmod 600 /home/runner/.vault_pass
-
       - name: Execute Master Orchestrator
         env:
-          ANSIBLE_VAULT_PASSWORD_FILE: /home/runner/.vault_pass
+          VAULT_PASSWORD: ${{ secrets.VAULT_PASSWORD }}
           ANSIBLE_HOST_KEY_CHECKING: "False"
         run: |
-          # We pass BOTH inventories so Ansible knows about localhost AND the remote server
-          ansible-playbook -i ansible/inventory/local.ini -i ansible/inventory/production.ini ansible/playbooks/orchestrate.yml
+          ansible-playbook \
+            -i ansible/inventory/local.ini \
+            -i ansible/inventory/production.ini \
+            --vault-password-file <(echo "$VAULT_PASSWORD") \
+            ansible/playbooks/orchestrate.yml
