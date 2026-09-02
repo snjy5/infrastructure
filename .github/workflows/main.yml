@@ -15,27 +15,20 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Install Ansible
-        run: sudo apt-get update && sudo apt-get install -y ansible
-
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_version: 1.5.0
-          # Required so Ansible can read Terraform's raw output
-          terraform_wrapper: false 
+      - name: Install Ansible & Molecule
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ansible python3-pip
+          pip3 install "molecule-plugins[docker]" ansible-lint
 
       - name: Install Ansible Dependencies
         run: ansible-galaxy install -r ansible/requirements.yml
 
       - name: Execute Master Orchestrator
-        # This is the most secure way to handle the vault password.
-        # It is passed directly to Ansible without ever touching the disk.
         env:
           VAULT_PASSWORD: ${{ secrets.VAULT_PASSWORD }}
           ANSIBLE_HOST_KEY_CHECKING: "False"
         run: |
-          # Check if the secret is empty before proceeding
           if [ -z "$VAULT_PASSWORD" ]; then
             echo "::error::VAULT_PASSWORD secret is empty or missing!"
             exit 1
@@ -45,4 +38,4 @@ jobs:
             -i ansible/inventory/local.ini \
             -i ansible/inventory/production.ini \
             --vault-password-file <(echo "$VAULT_PASSWORD") \
-            ansible/playbooks/orchestrate.yml
+            ansible/playbooks/ci.yml

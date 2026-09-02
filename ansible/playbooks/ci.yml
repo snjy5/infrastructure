@@ -1,0 +1,138 @@
+---
+- name: CI Pipeline - Test, Validate, Deploy
+  hosts: localhost
+  connection: local
+  gather_facts: true
+  vars_files:
+    - ../inventory/group_vars/all/vault.yml
+
+  tasks:
+    # ============================================
+    # 1. RUN MOLECULE TESTS ON ALL ROLES
+    # ============================================
+    - name: Run Molecule tests on all roles
+      ansible.builtin.shell:
+        cmd: |
+          cd "{{ playbook_dir }}/../roles"
+          for role in */; do
+            echo "Testing role: $role"
+            cd "$role"
+            molecule test --parallel
+            cd ..
+          done
+      register: molecule_results
+      changed_when: false
+
+    - name: Fail if any Molecule tests failed
+      ansible.builtin.fail:
+        msg: "Molecule tests failed! Check the logs above."
+      when: molecule_results.rc != 0
+
+    # ============================================
+    # 2. VALIDATE TERRAFORM
+    # ============================================
+    - name: Initialize Terraform
+      community.general.terraform:
+        project_path: "{{ playbook_dir }}/../../terraform"
+        state: present
+        force_init: true
+      environment:
+        AWS_ACCESS_KEY_ID: "{{ vault_aws_access_key_id }}"
+        AWS_SECRET_ACCESS_KEY: "{{ vault_aws_secret_access_key }}"
+      register: terraform_init
+
+    - name: Validate Terraform configuration
+      community.general.terraform:
+        project_path: "{{ playbook_dir }}/../../terraform"
+        state: "plan"
+        plan_file: /tmp/tfplan
+      environment:
+        AWS_ACCESS_KEY_ID: "{{ vault_aws_access_key_id }}"
+        AWS_SECRET_ACCESS_KEY: "{{ vault_aws_secret_access_key }}"
+      register: terraform_plan
+
+    - name: Show Terraform plan
+      ansible.builtin.debug:
+        var: terraform_plan.stdout_lines
+
+    - name: Ask for approval (manual gate)
+      ansible.builtin.pause:
+        prompt: |
+          Review the Terraform plan above.
+          Type 'yes' to apply and deploy to production.
+      register: approval
+      when: terraform_plan.changed
+
+    - name: Abort if not approved
+      ansible.builtin.fail:
+        msg: "Deployment aborted by user."
+      when: 
+        - approval.user_input is defined
+        - approval.user_input != 'yes'
+
+    # ============================================
+    # 3. PROVISION INFRASTRUCTURE
+    # ============================================
+    - name: Ensure .ssh directory exists
+      ansible.builtin.file:
+        path: ~/.ssh
+        state: directory
+        mode: '0700'
+
+    - name: Write SSH Private Key from Vault
+      ansible.builtin.copy:
+        content: "{{ vault_ssh_private_key }}"
+        dest: ~/.ssh/id_ed25519_deploy
+        mode: '0600'
+
+    - name: Extract Public Key for Terraform
+      ansible.builtin.shell:
+        cmd: ssh-keygen -y -f ~/.ssh/id_ed25519_deploy > ~/.ssh/id_ed25519_deploy.pub
+      changed_when: false
+
+    - name: Apply Terraform (provision infrastructure)
+      community.general.terraform:
+        project_path: "{{ playbook_dir }}/../../terraform"
+        state: present
+        force_init: false
+        plan_file: /tmp/tfplan
+      environment:
+        AWS_ACCESS_KEY_ID: "{{ vault_aws_access_key_id }}"
+        AWS_SECRET_ACCESS_KEY: "{{ vault_aws_secret_access_key }}"
+      when: approval.user_input == 'yes'
+
+    - name: Refresh inventory to pick up production.ini
+      ansible.builtin.meta: refresh_inventory
+
+    # ============================================
+    # 4. DEPLOY APPLICATIONS
+    # ============================================
+    - name: Deploy applications to production
+      ansible.builtin.include_playbook: playbook.yml
+      when: approval.user_input == 'yes'
+
+    # ============================================
+    # 5. POST-DEPLOYMENT VERIFICATION
+    # ============================================
+    - name: Verify services are running
+      ansible.builtin.uri:
+        url: "https://{{ item.name }}.{{ main_domain }}"
+        status_code: 200
+        validate_certs: false
+      loop: "{{ services }}"
+      when: 
+        - approval.user_input == 'yes'
+        - main_domain is defined
+      register: health_checks
+      until: health_checks.status == 200
+      retries: 5
+      delay: 10
+
+    - name: Deployment complete
+      ansible.builtin.debug:
+        msg: |
+          ✅ Deployment successful!
+          Services deployed:
+          {% for app in services %}
+          - https://{{ app.name }}.{{ main_domain }}
+          {% endfor %}
