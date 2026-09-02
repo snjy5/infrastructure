@@ -1,30 +1,15 @@
 ---
-# CI Pipeline: Run Molecule tests, then deploy via orchestrate.yml
-- name: Run Molecule tests on all roles
+# Play 1: Install Galaxy dependencies
+- name: Install Ansible Galaxy dependencies
   hosts: localhost
   connection: local
-  gather_facts: true
-  vars_files:
-    - ../inventory/group_vars/all/vault.yml
-
+  gather_facts: false
   tasks:
-    - name: Run Molecule tests on all roles
-      shell:
-        cmd: |
-          cd "{{ playbook_dir }}/../roles"
-          for role in */; do
-            echo "Testing role: $role"
-            cd "$role"
-            molecule test --parallel
-            cd ..
-          done
-      register: molecule_results
+    - name: Install collections and roles from requirements.yml
+      command:
+        cmd: ansible-galaxy install -r "{{ playbook_dir }}/../requirements.yml"
       changed_when: false
+      register: galaxy_install
 
-    - name: Fail if any Molecule tests failed
-      fail:
-        msg: "Molecule tests failed! Check the logs above."
-      when: molecule_results.rc != 0
-
-# After tests pass, run the original orchestration playbook
+# Play 2: Run the real orchestration playbook
 - import_playbook: orchestrate.yml

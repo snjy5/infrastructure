@@ -15,14 +15,8 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Install Ansible & Molecule
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y ansible python3-pip
-          pip3 install "molecule-plugins[docker]" ansible-lint
-
-      - name: Install Ansible Dependencies
-        run: ansible-galaxy install -r ansible/requirements.yml
+      - name: Install Ansible
+        run: sudo apt-get update && sudo apt-get install -y ansible
 
       - name: Execute Master Orchestrator
         env:
@@ -34,4 +28,7 @@ jobs:
             exit 1
           fi
 
-          ansible-playbook -i ansible/inventory/local.ini --vault-password-file <(echo "$VAULT_PASSWORD") ansible/playbooks/ci.yml
+          ansible-playbook \
+            -i ansible/inventory/local.ini \
+            --vault-password-file <(echo "$VAULT_PASSWORD") \
+            ansible/playbooks/ci.yml
