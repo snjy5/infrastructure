@@ -3,48 +3,42 @@ name: Production Deploy
 on:
   push:
     branches:
-      - master # Changed to master to match your file
+      - master
   workflow_dispatch:
 
 jobs:
   deploy:
     name: Deploy to Production
     runs-on: ubuntu-latest
-    
-    # Environment variables available to all steps in this job
-    env:
-      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-      ANSIBLE_SSH_PRIVATE_KEY_FILE: /home/runner/.ssh/id_ed25519_deploy
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
       - name: Install Ansible
-        # ubuntu-latest has ansible, but it's best to ensure it's up to date
         run: sudo apt-get update && sudo apt-get install -y ansible
-
-      - name: Configure SSH Key
-        env:
-          SSH_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
-        run: |
-          if [ -z "$SSH_KEY" ]; then
-            echo "::error::SSH_PRIVATE_KEY secret is empty or missing!"
-            exit 1
-          fi
-          mkdir -p ~/.ssh
-          echo "$SSH_KEY" > $ANSIBLE_SSH_PRIVATE_KEY_FILE
-          chmod 600 $ANSIBLE_SSH_PRIVATE_KEY_FILE
-          ssh-keygen -y -f $ANSIBLE_SSH_PRIVATE_KEY_FILE > ~/.ssh/id_ed25519_deploy.pub
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: 1.5.0
+          # Required so Ansible can read Terraform's raw output
+          terraform_wrapper: false 
 
-      - name: Execute Deployment Script
+      - name: Install Ansible Dependencies
+        run: ansible-galaxy install -r ansible/requirements.yml
+
+      - name: Configure Ansible Vault Password
+        env:
+          VAULT_PASS: ${{ secrets.VAULT_PASSWORD }}
         run: |
-          # Ensure the script is executable before running it
-          chmod +x ./ci-deploy.sh
-          ./ci-deploy.sh
+          echo "$VAULT_PASS" > /home/runner/.vault_pass
+          chmod 600 /home/runner/.vault_pass
+
+      - name: Execute Master Orchestrator
+        env:
+          ANSIBLE_VAULT_PASSWORD_FILE: /home/runner/.vault_pass
+          ANSIBLE_HOST_KEY_CHECKING: "False"
+        run: |
+          # We pass BOTH inventories so Ansible knows about localhost AND the remote server
+          ansible-playbook -i ansible/inventory/local.ini -i ansible/inventory/production.ini ansible/playbooks/orchestrate.yml

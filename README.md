@@ -1,3 +1,6 @@
+# Description
+This is a ansible+terraform project with the CI/CD pipeline themselves in ansible.
+
 # Infrastructure Operations Guide & Handbook
 
 This guide provides the standard operating procedures for deploying and extending the infrastructure. Follow these instructions precisely to maintain a secure, idempotent, and automated environment.

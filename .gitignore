@@ -8,6 +8,11 @@ terraform/.terraform.lock.hcl
 # terraform generates it
 ansible/inventory/production.ini 
 
+# secrets for ansible-vault, just being thorough
+secrets
+secrets/
+secrets/**
+
 # Ansible backups
 **/*.bak
 

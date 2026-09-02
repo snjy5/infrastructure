@@ -1,0 +1,59 @@
+version: "3.8"
+
+services:
+  # ---------------------------------------------------
+  # SERVICE 1: Gitea (Git Server)
+  # ---------------------------------------------------
+  gitea:
+    image: gitea/gitea:1.21.11
+    container_name: gitea
+    restart: unless-stopped
+    environment:
+      - USER_UID=1000
+      - USER_GID=1000
+      - GITEA__database__DB_TYPE=mysql
+      - GITEA__database__HOST=db:3306
+      - GITEA__database__NAME=gitea
+      - GITEA__database__USER=gitea
+      # Ansible will inject this from the Vault!
+      - GITEA__database__PASSWD=${GITEA_DB_PASSWORD} 
+    volumes:
+      - ./data/gitea:/data
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+    ports:
+      # Binds to localhost:3000. Nginx will proxy traffic here.
+      - "127.0.0.1:3000:3000"
+    depends_on:
+      - db
+
+  # Database for Gitea
+  db:
+    image: mysql:8.0
+    container_name: gitea_db
+    restart: unless-stopped
+    environment:
+      # Ansible will inject these from the Vault!
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+      - MYSQL_DATABASE=gitea
+      - MYSQL_USER=gitea
+      - MYSQL_PASSWORD=${GITEA_DB_PASSWORD}
+    volumes:
+      - ./data/mysql:/var/lib/mysql
+
+  # ---------------------------------------------------
+  # SERVICE 2: Your Custom App (Placeholder)
+  # ---------------------------------------------------
+  newapp:
+    # Using a simple web server image just as a placeholder
+    image: traefik/whoami 
+    container_name: newapp
+    restart: unless-stopped
+    ports:
+      # Binds to localhost:8080. Nginx will proxy traffic here.
+      - "127.0.0.1:8080:80"
+
+# Define a custom network so containers can talk to each other securely
+networks:
+  default:
+    name: infrastructure_net

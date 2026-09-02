@@ -1,0 +1,42 @@
+---
+# STAGE 1: Local Orchestration & Provisioning
+- name: Provision Infrastructure
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars_files:
+    # This loads your encrypted secrets
+    - ../inventory/group_vars/all/vault.yml 
+  
+  tasks:
+    - name: Ensure .ssh directory exists
+      ansible.builtin.file:
+        path: ~/.ssh
+        state: directory
+        mode: '0700'
+
+    - name: Write SSH Private Key from Vault to disk
+      ansible.builtin.copy:
+        content: "{{ vault_ssh_private_key }}"
+        dest: ~/.ssh/id_ed25519_deploy
+        mode: '0600'
+
+    - name: Extract Public Key for Terraform
+      ansible.builtin.shell: ssh-keygen -y -f ~/.ssh/id_ed25519_deploy > ~/.ssh/id_ed25519_deploy.pub
+      changed_when: false
+
+    - name: Provision Infrastructure with Terraform
+      community.general.terraform:
+        project_path: "{{ playbook_dir }}/../../terraform"
+        state: present
+        force_init: true
+      environment:
+        # Pass AWS keys directly from Vault into Terraform's memory!
+        AWS_ACCESS_KEY_ID: "{{ vault_aws_access_key_id }}"
+        AWS_SECRET_ACCESS_KEY: "{{ vault_aws_secret_access_key }}"
+
+    - name: Refresh inventory to pick up the newly generated production.ini
+      ansible.builtin.meta: refresh_inventory
+
+# STAGE 2: Server Configuration & App Deployment
+- import_playbook: playbook.yml

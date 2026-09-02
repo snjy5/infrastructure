@@ -1,12 +1,18 @@
 ---
 collections:
+  # This contains the 'terraform' module AND the 'ufw' firewall module
   - name: community.general
     version: "8.5.0"
-  - name: community.docker 
-    version: "3.10.0"      
+    
+  # This contains the 'docker_compose_v2' module
+  - name: community.docker
+    version: "3.10.0"
 
 roles:
+  # Installs Docker on the host
   - name: geerlingguy.docker
     version: "7.0.1"
+    
+  # Installs Nginx on the host
   - name: geerlingguy.nginx
     version: "3.3.1"
