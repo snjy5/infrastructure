@@ -22,7 +22,7 @@ provider "aws" {
 
 variable "public_key_path" {
   description = "Path to the public SSH key used to create the AWS key pair."
-  default     = "~/.ssh/id_ed25519.pub"
+  default     = "~/.ssh/id_ed25519_deploy.pub"
 }
 
 # NEW: Added a variable for the Ansible user.
@@ -141,12 +141,10 @@ resource "aws_eip" "web_eip" {
 # It runs after all the other resources are created.
 resource "local_file" "ansible_inventory" {
   content = templatefile("${path.module}/inventory.tpl", {
-    # These are the variables passed into the template file
     host_ip      = aws_eip.web_eip.public_ip
     ssh_user     = var.ansible_user
-    ssh_key_path = "~/.ssh/id_ed25519" # Use the standard path for the private key
+    ssh_key_path = "~/.ssh/id_ed25519_deploy" 
   })
-  # This sets the output path and filename
   filename = "../ansible/inventory/production.ini"
 }
 
