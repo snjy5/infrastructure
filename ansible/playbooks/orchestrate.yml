@@ -1,14 +1,12 @@
 ---
 # STAGE 1: Local Orchestration & Infrastructure Provisioning
-# -------------------------------------------------------------------
 - name: Provision Infrastructure
   hosts: localhost
   connection: local
   gather_facts: false
   vars_files:
-    # This loads your encrypted secrets from the vault file
-    - ../inventory/group_vars/all/vault.yml 
-  
+    - ../inventory/group_vars/all/vault.yml
+
   tasks:
     - name: Ensure .ssh directory exists on the CI runner
       ansible.builtin.file:
@@ -16,7 +14,7 @@
         state: directory
         mode: '0700'
 
-    - name: Write SSH Private Key from Vault to disk for this session
+    - name: Write SSH Private Key from Vault to disk
       ansible.builtin.copy:
         content: "{{ vault_ssh_private_key }}"
         dest: ~/.ssh/id_ed25519_deploy
@@ -33,33 +31,13 @@
         state: present
         force_init: true
       environment:
-        # Pass AWS keys directly from Vault into Terraform's memory
         AWS_ACCESS_KEY_ID: "{{ vault_aws_access_key_id }}"
         AWS_SECRET_ACCESS_KEY: "{{ vault_aws_secret_access_key }}"
 
     - name: Refresh inventory to pick up the newly generated production.ini
       ansible.builtin.meta: refresh_inventory
 
-# STAGE 2: Base Server Configuration (SETUP ONLY)
-# This runs against the new production server but only executes tasks
-# tagged with 'setup'.
-- name: Configure Base Server
-  hosts: all # This targets the new production server defined in production.ini
-  gather_facts: false
-  tasks:
-    - import_playbook: playbook.yml
-      tags: ['setup']
 
-# STAGE 3: Application Deployment (DEPLOY ONLY)
-# This runs against the production server again, but only executes tasks
-# tagged with 'deploy', like copying files and starting containers.
-- name: Deploy Applications
-  hosts: all # This targets the new production server
-  gather_facts: false
-  tasks:
-    - import_playbook: playbook.yml
-      tags: ['deploy']
-  vars:
-    # Pass the decrypted secrets from the vault down to this specific stage
-    vault_gitea_db_password: "{{ vault_gitea_db_password }}"
-    vault_mysql_root_password: "{{ vault_mysql_root_password }}"
+# STAGE 2: Server Configuration & App Deployment
+- name: Configure Server and Deploy Applications
+  import_playbook: playbook.yml

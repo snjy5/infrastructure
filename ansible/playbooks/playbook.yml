@@ -1,12 +1,16 @@
 ---
-- hosts: all
+
+# SERVER CONFIGURATION & DEPLOYMENT PLAYBOOK
+# Configures the target server with Docker, Nginx, and starts apps.
+
+- name: Configure Server and Deploy Applications
+  hosts: webservers
   become: true
+  vars_files:
+    - ../inventory/group_vars/all/vault.yml
 
   vars:
-    # Define your domain here once.
     main_domain: "yourdomain.com"
-
-    # A list of service definitions used to automatically generate Nginx configs.
     services:
       - name: gitea
         port: 3000
@@ -14,32 +18,11 @@
         port: 8080
 
   roles:
-    # --- Base System Configuration Roles ---
     - role: geerlingguy.docker
-      tags: ['setup'] # This is a setup task
 
     - role: geerlingguy.nginx
-      tags: ['setup'] # This is a setup task
       vars:
         nginx_remove_default_vhost: true
-        # This built-in loop automatically builds the config for every app in your 'services' list
-        nginx_vhosts: >-
-          {% set vhosts = [] %}
-          {% for app in services %}
-          {%   set _ = vhosts.append({
-                 'listen': '80',
-                 'server_name': app.name ~ '.' ~ main_domain,
-                 'proxy_pass': 'http://127.0.0.1:' ~ app.port|string,
-                 'proxy_set_headers': [
-                   'Host $host',
-                   'X-Real-IP $remote_addr',
-                   'X-Forwarded-For $proxy_add_x_forwarded_for',
-                   'X-Forwarded-Proto $scheme'
-                 ]
-               })
-          %}
-          {% endfor %}
-          {{ vhosts | to_json }}
         _vhosts_json: >-
           {% set vhosts = [] %}
           {% for app in services %}
@@ -60,20 +43,17 @@
         nginx_vhosts: "{{ _vhosts_json | from_json }}"
 
   tasks:
-    # --- Application Deployment Tasks ---
     - name: Ensure application directory exists on server
       ansible.builtin.file:
         path: /opt/app
         state: directory
         mode: '0755'
-      tags: ['deploy'] # This is a deployment task
 
     - name: Copy docker-compose.yml to server
       ansible.builtin.copy:
-        src: "{{ playbook_dir }}/../../docker-compose.yml" 
+        src: "{{ playbook_dir }}/../../docker-compose.yml"
         dest: /opt/app/docker-compose.yml
         mode: '0644'
-      tags: ['deploy'] # This is a deployment task
 
     - name: Deploy applications via Docker Compose
       community.docker.docker_compose_v2:
@@ -83,4 +63,3 @@
         env:
           GITEA_DB_PASSWORD: "{{ vault_gitea_db_password }}"
           MYSQL_ROOT_PASSWORD: "{{ vault_mysql_root_password }}"
-      tags: ['deploy'] # This is a deployment task
