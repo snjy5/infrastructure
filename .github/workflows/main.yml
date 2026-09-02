@@ -1,4 +1,17 @@
-steps:
+name: Production Deploy
+
+on:
+  push:
+    branches:
+      - master
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+
+    steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
@@ -9,16 +22,25 @@ steps:
         uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: 1.5.0
+          # Required so Ansible can read Terraform's raw output
           terraform_wrapper: false 
 
       - name: Install Ansible Dependencies
         run: ansible-galaxy install -r ansible/requirements.yml
 
       - name: Execute Master Orchestrator
+        # This is the most secure way to handle the vault password.
+        # It is passed directly to Ansible without ever touching the disk.
         env:
           VAULT_PASSWORD: ${{ secrets.VAULT_PASSWORD }}
           ANSIBLE_HOST_KEY_CHECKING: "False"
         run: |
+          # Check if the secret is empty before proceeding
+          if [ -z "$VAULT_PASSWORD" ]; then
+            echo "::error::VAULT_PASSWORD secret is empty or missing!"
+            exit 1
+          fi
+
           ansible-playbook \
             -i ansible/inventory/local.ini \
             -i ansible/inventory/production.ini \
