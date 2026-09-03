@@ -1,6 +1,5 @@
-# roles/common/tasks/main.yml
-# Baseline configuration applied to every server
----
+# ansible/roles/common/tasks/main.yml
+
 - name: Set /etc/hosts from template
   ansible.builtin.template:
     src: templates/hosts.j2
@@ -8,6 +7,16 @@
     owner: root
     group: root
     mode: '0644'
+  become: true
+
+- name: Remove broken Docker APT sources to prevent apt update failures
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - /etc/apt/sources.list.d/docker.list
+    - /etc/apt/sources.list.d/download_docker_com_linux_debian.list
+    - /etc/apt/sources.list.d/archive_uri-https_download_docker_com_linux_debian-bookworm.list
   become: true
 
 - name: Install essential packages
@@ -22,4 +31,4 @@
     state: present
     update_cache: true
     cache_valid_time: 3600
-
+  become: true
