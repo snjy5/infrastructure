@@ -8,19 +8,12 @@
   vars_files:
     - ../inventory/group_vars/all/vault.yml
 
-  vars:
-    main_domain: "yourdomain.com"
-    services:
-      - name: gitea
-        port: 3000
-      - name: newapp
-        port: 8080
-
   roles:
     - role: common
     - role: firewall
-    - role: nginxinc.nginx
+    - role: geerlingguy.security
     - role: geerlingguy.docker
+    - role: nginxinc.nginx
       vars:
         nginx_remove_default_vhost: true
         _vhosts_json: >-

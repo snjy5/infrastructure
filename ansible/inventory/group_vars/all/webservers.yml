@@ -1,0 +1,21 @@
+# ansible/inventory/group_vars/webservers.yml
+
+# geerlingguy.security - SSH hardening
+security_ssh_permit_root_login: "no"
+security_ssh_password_authentication: "no"
+security_ssh_x11_forwarding: "no"
+security_ssh_max_auth_tries: 3
+security_fail2ban_enabled: true
+security_autoupdate_enabled: true
+security_autoupdate_reboot: false
+
+# geerlingguy.docker
+docker_install_compose_plugin: true
+
+# Application config
+main_domain: "yourdomain.com"
+services:
+  - name: gitea
+    port: 3000
+  - name: newapp
+    port: 8080
