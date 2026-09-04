@@ -9,6 +9,7 @@ on:
 env:
   ANSIBLE_HOST_KEY_CHECKING: "False"
   ANSIBLE_CONFIG: ansible.cfg
+  VAULT_PASSWORD: "${{ secrets.VAULT_PASSWORD }}"
 
 jobs:
   deploy:
@@ -34,7 +35,7 @@ jobs:
 
       - name: Create Vault Password File
         run: |
-          echo "${{ secrets.VAULT_PASSWORD }}" > /tmp/vault_secret456
+          echo "$VAULT_PASSWORD" > /tmp/vault_secret456
           chmod 600 /tmp/vault_secret456
 
       - name: Configure SSH & Terraform
