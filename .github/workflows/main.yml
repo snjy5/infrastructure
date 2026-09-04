@@ -1,4 +1,4 @@
-name: Production Deploy
+name: CI/CD
 
 on:
   push:
@@ -23,7 +23,7 @@ jobs:
       - name: Install Ansible
         run: sudo apt-get update && sudo apt-get install -y ansible
 
-      - name: Setup Terraform
+      - name: Install Terraform
         uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: 1.9.0
@@ -33,7 +33,7 @@ jobs:
         run: |
           ansible-galaxy install -r ansible/requirements.yml
 
-      - name: Terraform and ssh setup
+      - name: Configure SSH & Terraform
         run: |
           if [ -z "$VAULT_PASSWORD" ]; then
             echo "::error::VAULT_PASSWORD secret is empty or missing!"
@@ -45,7 +45,7 @@ jobs:
             --vault-password-file <(echo "$VAULT_PASSWORD") \
             ansible/playbooks/orchestrate.yml
 
-      - name: Infra testing by local deploy
+      - name: Local Testing
         run: |
           ansible-playbook \
             -i ansible/inventory/local.ini \
