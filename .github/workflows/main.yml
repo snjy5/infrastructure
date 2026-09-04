@@ -7,7 +7,6 @@ on:
   workflow_dispatch:
 
 env:
-  VAULT_PASSWORD: ${{ secrets.VAULT_PASSWORD }}
   ANSIBLE_HOST_KEY_CHECKING: "False"
   ANSIBLE_CONFIG: ansible.cfg
 
@@ -33,28 +32,37 @@ jobs:
         run: |
           ansible-galaxy install -r ansible/requirements.yml
 
+      - name: Create Vault Password File
+        run: |
+          echo "${{ secrets.VAULT_PASSWORD }}" > /tmp/vault_secret456
+          chmod 600 /tmp/vault_secret456
+
       - name: Configure SSH & Terraform
         run: |
-          if [ -z "$VAULT_PASSWORD" ]; then
-            echo "::error::VAULT_PASSWORD secret is empty or missing!"
+          if [ ! -s /tmp/vault_secret456 ]; then
+            echo "::error::Vault password file is empty or missing!"
             exit 1
           fi
-
           ansible-playbook \
             -i ansible/inventory/local.ini \
-            --vault-password-file <(echo "$VAULT_PASSWORD") \
+            --vault-password-file /tmp/vault_secret456 \
             ansible/playbooks/orchestrate.yml
 
       - name: Local Testing
         run: |
           ansible-playbook \
             -i ansible/inventory/local.ini \
-            --vault-password-file <(echo "$VAULT_PASSWORD") \
+            --vault-password-file /tmp/vault_secret456 \
             ansible/playbooks/playbook.yml
 
       - name: Production Deploy
         run: |
           ansible-playbook \
             -i ansible/inventory/production.ini \
-            --vault-password-file <(echo "$VAULT_PASSWORD") \
+            --vault-password-file /tmp/vault_secret456 \
             ansible/playbooks/playbook.yml
+
+      - name: Cleanup Vault File
+        if: always()
+        run: |
+          shred -u /tmp/vault_secret456 2>/dev/null || true
