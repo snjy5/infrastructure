@@ -55,7 +55,5 @@
 
     - name: Fail if no IP address found
       ansible.builtin.fail:
-        msg: >-
-          No server IP address found from Terraform output!
-          Available outputs: {{ terraform_result.outputs.keys() | list | default([]) }}
+        msg: "No server IP address found from Terraform output!\nAvailable outputs: {{ terraform_result.outputs.keys() | list | default([]) }}"
       when: server_ip == ""
