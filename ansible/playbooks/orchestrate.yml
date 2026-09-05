@@ -41,7 +41,7 @@
 
     - name: Debug - Show Terraform output
       ansible.builtin.debug:
-        msg: "Server IP: {{ server_ip }}"
+        msg: "Server IP {{ server_ip }}"
       when: server_ip != ""
 
     - name: Add host to webservers group dynamically

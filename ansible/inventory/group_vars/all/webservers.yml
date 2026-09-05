@@ -13,14 +13,14 @@ security_autoupdate_reboot: false
 docker_install_compose_plugin: true
 
 # geerlingguy.firewall
-    firewall_allowed_tcp_ports:
-      - "22"
-      - "80"
-      - "443"
-    firewall_allowed_udp_ports:
-      - "51820"
-    firewall_state: enabled
-    firewall_default_deny_incoming: true
+firewall_allowed_tcp_ports:
+  - "22"
+  - "80"
+  - "443"
+firewall_allowed_udp_ports:
+  - "51820"
+firewall_state: "started"
+firewall_default_deny_incoming: true
 
 # Application config
 main_domain: "yourdomain.com"
