@@ -10,7 +10,7 @@
 
   roles:
     - role: common
-    - role: firewall
+    - role: geerlingguy.firewall
     - role: geerlingguy.security
     - role: geerlingguy.docker
     - role: nginxinc.nginx
