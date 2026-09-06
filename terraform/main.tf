@@ -120,6 +120,7 @@ resource "aws_instance" "web" {
   # Protect your permanent server from accidental `terraform destroy`
   lifecycle {
     prevent_destroy = true
+    ignore_changes = [ami]
   }
 
   tags = {
