@@ -33,3 +33,14 @@
         project_src: /opt/app
         state: present
         remove_orphans: true
+
+    - name: Reload nginx after app deployment
+      ansible.builtin.service:
+        name: nginx
+        state: reloaded
+      become: true
+
+    - name: Flush DNS cache
+      ansible.builtin.command: resolvectl flush-caches
+      changed_when: false
+      become: true
