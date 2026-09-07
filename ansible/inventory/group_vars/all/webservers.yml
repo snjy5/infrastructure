@@ -23,9 +23,9 @@ firewall_state: "started"
 firewall_default_deny_incoming: true
 
 # Application config
-main_domain: "yourdomain.com"
+main_domain: "thecatvoid.us.to"
 services:
   - name: gitea
     port: 3000
-  - name: newapp
+  - name: resume
     port: 8080

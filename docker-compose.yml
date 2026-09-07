@@ -1,7 +1,5 @@
 services:
-  # ---------------------------------------------------
-  # SERVICE 1: Gitea (Git Server)
-  # ---------------------------------------------------
+  # gitea for git hosting
   gitea:
     image: gitea/gitea:1.21.11
     container_name: gitea
@@ -39,17 +37,13 @@ services:
     volumes:
       - ./data/mysql:/var/lib/mysql
 
-  # ---------------------------------------------------
-  # SERVICE 2: Your Custom App (Placeholder)
-  # ---------------------------------------------------
-  newapp:
-    # Using a simple web server image just as a placeholder
-    image: traefik/whoami 
-    container_name: newapp
-    restart: unless-stopped
+  # my portfolio
+  resume:
+    build:
+      context: https://github.com/snjy5/resume-bash.git
     ports:
-      # Binds to localhost:8080. Nginx will proxy traffic here.
-      - "127.0.0.1:8080:80"
+      - "127.0.0.1:8090:80"
+    restart: unless-stopped
 
 # Define a custom network so containers can talk to each other securely
 networks:
