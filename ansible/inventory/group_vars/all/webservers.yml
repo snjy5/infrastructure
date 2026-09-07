@@ -28,4 +28,4 @@ services:
   - name: gitea
     port: 3000
   - name: resume
-    port: 8080
+    port: 8090
