@@ -44,3 +44,10 @@
       ansible.builtin.command: resolvectl flush-caches
       changed_when: false
       become: true
+
+    - name: Restart docker app
+      community.docker.docker_compose_v2:
+        project_src: /opt/app
+        services:
+          - resume
+        state: restarted
