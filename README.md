@@ -1,11 +1,11 @@
 # Infrastructure Project
 
-Ansible + Terraform project with the CI/CD pipeline orchestrated in Ansible.
+Ansible + Terraform project for easy deployment of applications on AWS
 
 ## Table of Contents
 
 - [Full System Deployment](#1-full-system-deployment)
-- [Adding a New Service](#2-adding-a-new-service)
+- [Adding a New Application](#2-adding-a-new-app)
 - [Core Development Standards](#3-core-development-standards)
 - [CI/CD Secret Management](#4-cicd-secret-management)
 
@@ -51,11 +51,7 @@ ansible-playbook \
 
 ---
 
-## 2. Adding a New Service
-
-How you add a service depends entirely on whether it is an **Application** or a **System Configuration**.
-
-### A. Adding an Application (Web App, Database, Gitea, etc.)
+## 2. Adding a New Application
 
 Applications are strictly managed by Docker Compose. **Do not use Ansible to deploy applications.**
 
@@ -79,14 +75,6 @@ Applications are strictly managed by Docker Compose. **Do not use Ansible to dep
         port: 8080
     ```
 
-### B. Adding a System Configuration (VPN, Monitoring, OS Tweaks)
-
-System configurations are managed by Ansible.
-
-**Rule: Always use a community role — never write a role from scratch.**
-
-We do not maintain hand-written role logic in this repository. Every role must come from an external, versioned source so it stays auditable, reusable, and out of the "no one remembers why this task exists" bucket. There are two accepted ways to bring a role in — pick based on how much you trust letting CI fetch it fresh every run.
-
 #### Option 1 — Pull from Galaxy at install time
 
 Simplest option. CI resolves the role from `requirements.yml` on every run.
@@ -106,9 +94,7 @@ Simplest option. CI resolves the role from `requirements.yml` on every run.
 
 Never omit `version:` — an unpinned role resolves to whatever is newest at install time, which breaks the "a second run must be idempotent and reproducible" guarantee in section 3.
 
-#### Option 2 — Vendor the role into the repo (preferred for anything security- or availability-critical)
-
-A pull from `requirements.yml` still means CI is fetching code from a third party's repo on every run, trusting that the maintainer's account, the tag, and the package registry are all uncompromised at that exact moment. For roles that touch the firewall, SSH, or anything else where a supply-chain surprise would be expensive, vendor the role into the repo instead so nothing is fetched at deploy time and every change to it shows up as a reviewable diff:
+#### Option 2 — Vendor the role into the repo (preferred for control and reliability)
 
 ```bash
 cd ansible/
@@ -128,8 +114,6 @@ Vendored roles still go in `ansible/roles/`, alongside anything pulled via `requ
 ---
 
 ## 3. Core Development Standards
-
-These rules are mandatory and non-negotiable.
 
 1. **Strict separation of concerns (Ansible vs. Docker).** Ansible is for host-level configuration only: firewall, OS updates, user management, installing Docker/Nginx, and low-level network services like WireGuard. Docker Compose is for application services (Gitea, databases, web apps).
 2. **No public container ports.** Backend application ports must never be exposed directly to the internet. Containers bind strictly to `127.0.0.1` and route through the Nginx reverse proxy.
