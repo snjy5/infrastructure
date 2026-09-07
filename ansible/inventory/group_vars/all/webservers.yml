@@ -23,7 +23,7 @@ firewall_state: "started"
 firewall_default_deny_incoming: true
 
 # Application config
-main_domain: "thecatvoid.us.to"
+main_domain: "thecatvoid.online"
 services:
   - name: gitea
     port: 3000
