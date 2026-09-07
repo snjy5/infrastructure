@@ -1,0 +1,5 @@
+- name: restart zramswap
+  ansible.builtin.service:
+    name: zramswap
+    state: restarted
+  become: true

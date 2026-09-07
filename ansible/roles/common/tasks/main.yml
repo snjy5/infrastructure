@@ -33,3 +33,73 @@
     cache_valid_time: 3600
   become: true
 
+- name: Check if swap file already exists
+  ansible.builtin.stat:
+    path: /swapfile
+  register: swap_file_check
+
+- name: Create swap file
+  ansible.builtin.command:
+    cmd: fallocate -l 1G /swapfile
+  when: not swap_file_check.stat.exists
+  become: true
+
+- name: Set swap file permissions
+  ansible.builtin.file:
+    path: /swapfile
+    owner: root
+    group: root
+    mode: '0600'
+  become: true
+
+- name: Format swap file
+  ansible.builtin.command:
+    cmd: mkswap /swapfile
+  when: not swap_file_check.stat.exists
+  become: true
+
+- name: Enable swap file
+  ansible.builtin.command:
+    cmd: swapon /swapfile
+  when: not swap_file_check.stat.exists
+  become: true
+
+- name: Persist swap file in fstab
+  ansible.builtin.lineinfile:
+    path: /etc/fstab
+    line: '/swapfile none swap sw 0 0'
+    state: present
+  become: true
+
+- name: Set swappiness (prefer RAM, use swap only under real pressure)
+  ansible.posix.sysctl:
+    name: vm.swappiness
+    value: '10'
+    state: present
+    reload: true
+  become: true
+
+- name: Install zram-tools
+  ansible.builtin.apt:
+    name: zram-tools
+    state: present
+  become: true
+
+- name: Configure zram (compressed RAM swap)
+  ansible.builtin.copy:
+    dest: /etc/default/zramswap
+    content: |
+      ALGO=zstd
+      PERCENT=50
+      PRIORITY=100
+    mode: '0644'
+  become: true
+  notify: restart zramswap
+
+- name: Ensure zramswap is enabled and started
+  ansible.builtin.service:
+    name: zramswap
+    state: started
+    enabled: true
+  become: true
+

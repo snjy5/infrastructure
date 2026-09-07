@@ -28,19 +28,8 @@
         dest: /opt/app/docker-compose.yml
         mode: '0644'
 
-    - name: Create .env file for Docker Compose secrets
-      ansible.builtin.copy:
-        content: |
-          GITEA_DB_PASSWORD={{ vault_gitea_db_password }}
-          MYSQL_ROOT_PASSWORD={{ vault_mysql_root_password }}
-        dest: /opt/app/.env
-        mode: '0600'
-      no_log: true
-
     - name: Deploy applications via Docker Compose
       community.docker.docker_compose_v2:
         project_src: /opt/app
         state: present
         remove_orphans: true
-        env_files:
-          - /opt/app/.env
