@@ -7,6 +7,8 @@
   become: true
   vars_files:
     - ../inventory/group_vars/all/vault.yml
+  vars:
+    rebuild_resume: false
 
   roles:
     - role: common
@@ -28,7 +30,17 @@
         dest: /opt/app/docker-compose.yml
         mode: '0644'
 
-    - name: Deploy applications via Docker Compose
+    - name: Rebuild resume service from latest git
+      community.docker.docker_compose_v2:
+        project_src: /opt/app
+        services:
+          - resume
+        build: always
+        state: present
+      when: rebuild_resume | bool
+      register: resume_rebuilt
+
+    - name: Deploy all services via Docker Compose
       community.docker.docker_compose_v2:
         project_src: /opt/app
         state: present
@@ -39,15 +51,18 @@
         name: nginx
         state: reloaded
       become: true
+      when: resume_rebuilt is changed
 
     - name: Flush DNS cache
       ansible.builtin.command: resolvectl flush-caches
       changed_when: false
       become: true
+      when: resume_rebuilt is changed
 
-    - name: Restart docker app
+    - name: Restart resume container after rebuild
       community.docker.docker_compose_v2:
         project_src: /opt/app
         services:
           - resume
         state: restarted
+      when: resume_rebuilt is changed

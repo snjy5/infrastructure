@@ -1,4 +1,6 @@
 # ansible/roles/nginx/templates/reverse-proxy.conf.j2
+# no caching at all on any proxied content
+
 {% for app in services %}
 server {
     listen 80;
@@ -10,6 +12,14 @@ server {
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
+
+        # Never cache anything - simple and effective for small sites
+        proxy_hide_header Cache-Control;
+        proxy_hide_header Pragma;
+        proxy_hide_header Expires;
+        add_header Cache-Control "no-cache, no-store, must-revalidate" always;
+        add_header Pragma "no-cache" always;
+        add_header Expires "0" always;
     }
 }
 {% endfor %}
