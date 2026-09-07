@@ -10,6 +10,9 @@ secrets
 secrets/
 secrets/**
 
+# terraform generates remote hostname/ip/inventory
+ansible/inventory/production.ini
+
 # Ansible backups
 **/*.bak
 
