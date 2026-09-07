@@ -13,7 +13,7 @@
     - role: geerlingguy.firewall
     - role: geerlingguy.security
     - role: geerlingguy.docker
-    - role: nginxinc.nginx
+    - role: nginx
 
   tasks:
     - name: Ensure application directory exists on server

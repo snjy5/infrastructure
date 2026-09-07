@@ -33,11 +33,3 @@
     cache_valid_time: 3600
   become: true
 
-# add to ansible/roles/common/tasks/main.yml
-- name: Deploy reverse proxy vhost config
-  ansible.builtin.template:
-    src: templates/reverse-proxy.conf.j2
-    dest: /etc/nginx/conf.d/reverse-proxy.conf
-    mode: '0644'
-  become: true
-  notify: reload nginx
