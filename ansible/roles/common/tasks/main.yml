@@ -78,28 +78,3 @@
     state: present
     reload: true
   become: true
-
-- name: Install zram-tools
-  ansible.builtin.apt:
-    name: zram-tools
-    state: present
-  become: true
-
-- name: Configure zram (compressed RAM swap)
-  ansible.builtin.copy:
-    dest: /etc/default/zramswap
-    content: |
-      ALGO=zstd
-      PERCENT=50
-      PRIORITY=100
-    mode: '0644'
-  become: true
-  notify: restart zramswap
-
-- name: Ensure zramswap is enabled and started
-  ansible.builtin.service:
-    name: zramswap
-    state: started
-    enabled: true
-  become: true
-
