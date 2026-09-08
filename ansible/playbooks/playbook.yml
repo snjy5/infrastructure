@@ -33,7 +33,18 @@
       ansible.builtin.stat:
         path: /opt/app/resume-src
       register: resume_src_stat
-
+    
+    - name: Check if resume-src is a valid git repo
+      ansible.builtin.stat:
+        path: /opt/app/resume-src/.git
+      register: resume_src_git_stat
+    
+    - name: Remove resume-src if present but not a valid git checkout
+      ansible.builtin.file:
+        path: /opt/app/resume-src
+        state: absent
+      when: resume_src_stat.stat.exists and not resume_src_git_stat.stat.exists
+    
     - name: Clone/update resume repo
       ansible.builtin.git:
         repo: https://github.com/snjy5/resume.git
@@ -41,7 +52,7 @@
         version: main
         force: true
       register: resume_repo
-      when: (rebuild_resume | bool) or (not resume_src_stat.stat.exists)
+      when: (rebuild_resume | bool) or (not resume_src_stat.stat.exists) or (resume_src_stat.stat.exists and not resume_src_git_stat.stat.exists)
 
     - name: Rebuild resume service from local checkout
       community.docker.docker_compose_v2:
