@@ -1,9 +1,5 @@
----
 # SERVER CONFIGURATION & DEPLOYMENT PLAYBOOK
 # Configures the target server with Docker, Nginx, and starts apps.
-# Usage:
-#   Normal deploy:        ansible-playbook playbooks/playbook.yml
-#   Rebuild resume only:  ansible-playbook playbooks/playbook.yml -e rebuild_resume=true
 
 - name: Configure Server and Deploy Applications
   hosts: webservers
@@ -33,14 +29,29 @@
         dest: /opt/app/docker-compose.yml
         mode: '0644'
 
-    - name: Rebuild resume service from latest git
+    - name: Check if resume-src already exists
+      ansible.builtin.stat:
+        path: /opt/app/resume-src
+      register: resume_src_stat
+
+    - name: Clone/update resume repo
+      ansible.builtin.git:
+        repo: https://github.com/snjy5/resume.git
+        dest: /opt/app/resume-src
+        version: main
+        force: true
+      register: resume_repo
+      when: (rebuild_resume | bool) or (not resume_src_stat.stat.exists)
+
+    - name: Rebuild resume service from local checkout
       community.docker.docker_compose_v2:
         project_src: /opt/app
         services:
           - resume
         build: always
+        nocache: true
         state: present
-      when: rebuild_resume | bool
+      when: resume_repo is not skipped and resume_repo.changed
       register: resume_rebuilt
 
     - name: Deploy all services via Docker Compose

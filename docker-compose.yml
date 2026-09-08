@@ -17,12 +17,12 @@ services:
   # my portfolio
   resume:
     build:
-      context: https://github.com/snjy5/resume.git#main
+      context: ./resume-src
+    container_name: resume
     ports:
       - "127.0.0.1:8090:80"
     restart: unless-stopped
 
-# Define a custom network so containers can talk to each other securely
 networks:
   default:
     name: infrastructure_net
