@@ -17,7 +17,7 @@ services:
   # my portfolio
   resume:
     build:
-      context: https://github.com/snjy5/resume.git
+      context: https://github.com/snjy5/resume.git#main
     ports:
       - "127.0.0.1:8090:80"
     restart: unless-stopped

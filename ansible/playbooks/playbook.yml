@@ -1,6 +1,9 @@
 ---
 # SERVER CONFIGURATION & DEPLOYMENT PLAYBOOK
 # Configures the target server with Docker, Nginx, and starts apps.
+# Usage:
+#   Normal deploy:        ansible-playbook playbooks/playbook.yml
+#   Rebuild resume only:  ansible-playbook playbooks/playbook.yml -e rebuild_resume=true
 
 - name: Configure Server and Deploy Applications
   hosts: webservers
