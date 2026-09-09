@@ -21,3 +21,7 @@ ansible/inventory/production.ini
 .vscode/
 *.swp
 .DS_Store
+
+# local testing downloaded ansible requirememt files
+roles/
+collections/
