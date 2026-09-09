@@ -28,7 +28,7 @@ resume_repo_url: https://github.com/snjy5/resume.git
 resume_repo_branch: master
 
 # Nginx / SSL Role Variables
-admin_email: "{[ vault_admin_email }}"
+admin_email: "{{ vault_admin_email }}"
 webroot_path: "/var/www/certbot"
 cert_min_days: 30
 
