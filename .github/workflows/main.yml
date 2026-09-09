@@ -35,35 +35,35 @@ jobs:
 
       - name: Create Vault Password File
         run: |
-          echo "$VAULT_PASSWORD" > /tmp/vault_secret456
-          chmod 600 /tmp/vault_secret456
+          echo "$VAULT_PASSWORD" > secrets/vault
+          chmod 600 secrets/vault
 
       - name: Configure SSH & Terraform
         run: |
-          if [ ! -s /tmp/vault_secret456 ]; then
+          if [ ! -s secrets/vault ]; then
             echo "::error::Vault password file is empty or missing!"
             exit 1
           fi
           ansible-playbook \
             -i ansible/inventory/local.ini \
-            --vault-password-file /tmp/vault_secret456 \
+            --vault-password-file secrets/vault \
             ansible/playbooks/orchestrate.yml
 
       - name: Local Testing
         run: |
           ansible-playbook \
             -i ansible/inventory/local.ini \
-            --vault-password-file /tmp/vault_secret456 \
+            --vault-password-file secrets/vault \
             ansible/playbooks/playbook.yml
 
       - name: Production Deploy
         run: |
           ansible-playbook \
             -i ansible/inventory/production.ini \
-            --vault-password-file /tmp/vault_secret456 \
+            --vault-password-file secrets/vault \
             ansible/playbooks/playbook.yml
 
       - name: Cleanup Vault File
         if: always()
         run: |
-          shred -u /tmp/vault_secret456 2>/dev/null || true
+          shred -u secrets/vault 2>/dev/null || true
