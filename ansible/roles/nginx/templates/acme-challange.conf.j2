@@ -1,0 +1,19 @@
+# ansible/roles/nginx/templates/acme-challenge.conf.j2
+# Temporary bootstrap config — serves ACME HTTP-01 challenges only.
+# Replaced by reverse-proxy.conf.j2 once certificates exist.
+
+{% for app in services %}
+server {
+    listen 80;
+    server_name {{ app.name }}.{{ main_domain }};
+
+    location /.well-known/acme-challenge/ {
+        root {{ webroot_path }};
+    }
+
+    location / {
+        return 200 'OK';
+        add_header Content-Type text/plain;
+    }
+}
+{% endfor %}

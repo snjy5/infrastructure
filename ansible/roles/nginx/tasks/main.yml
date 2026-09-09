@@ -1,3 +1,18 @@
+# ansible/roles/nginx/tasks/main.yml
+---
+# ---------------------------------------------------------
+# 1. VALIDATION (Fail fast if misconfigured)
+# ---------------------------------------------------------
+- name: Validate required variables are provided
+  ansible.builtin.assert:
+    that:
+      - main_domain is defined and main_domain | length > 0
+      - services is defined and services | length > 0
+      - admin_email is defined and admin_email | length > 0
+      - webroot_path is defined
+      - cert_min_days is defined
+    fail_msg: "Required variables (main_domain, services, admin_email, webroot_path, cert_min_days) must be defined."
+
 # ---------------------------------------------------------
 # 2. INSTALLATION & BASE SETUP
 # ---------------------------------------------------------
@@ -30,17 +45,32 @@
     mode: '0755'
   become: true
 
+# ---------------------------------------------------------
+# 3. BOOTSTRAP: deploy a cert-free HTTP-only vhost so nginx
+# has something to listen on before any certificate exists.
+# This is what makes the ACME HTTP-01 challenge possible at all.
+# ---------------------------------------------------------
+- name: Deploy temporary ACME-challenge-only vhost
+  ansible.builtin.template:
+    src: acme-challenge.conf.j2
+    dest: "/etc/nginx/sites-available/{{ main_domain }}"
+    owner: root
+    group: root
+    mode: '0644'
+  become: true
+
+- name: Enable Nginx site (bootstrap config)
+  ansible.builtin.file:
+    src: "/etc/nginx/sites-available/{{ main_domain }}"
+    dest: "/etc/nginx/sites-enabled/{{ main_domain }}"
+    state: link
+  become: true
+
 - name: Validate Nginx configuration before starting
   ansible.builtin.command: nginx -t
   changed_when: false
   become: true
 
-# ---------------------------------------------------------
-# 3. START NGINX (Required BEFORE Certbot runs)
-# ---------------------------------------------------------
-# Force a real restart rather than trusting the package
-# postinst's auto-start, which can report "active" before
-# the socket is actually bound on a fresh install.
 - name: Ensure Nginx is enabled and (re)started
   ansible.builtin.systemd:
     name: nginx
@@ -48,10 +78,6 @@
     enabled: true
     daemon_reload: true
   become: true
-
-- name: Give Nginx a moment to bind its sockets
-  ansible.builtin.pause:
-    seconds: 2
 
 # ---------------------------------------------------------
 # 4. PRE-FLIGHT CHECK (Port 80 availability)
@@ -80,3 +106,46 @@
           requires port 80 to be open. nginx status:
           {{ nginx_status_dump.stdout }}
   when: port_80_check is failed
+
+# ---------------------------------------------------------
+# 5. CERTIFICATES (one per service, under main_domain)
+# The bootstrap vhost above is what actually serves this challenge.
+# ---------------------------------------------------------
+- name: Check and Generate SSL Certificates for all services
+  ansible.builtin.include_tasks: manage_cert.yml
+  loop: "{{ services }}"
+  loop_control:
+    label: "{{ item.name }}.{{ main_domain }}"
+
+# ---------------------------------------------------------
+# 6. DEPLOY FINAL NGINX CONFIG (AFTER certs exist)
+# Overwrites the bootstrap vhost at the same path with the
+# full HTTP-redirect + HTTPS reverse-proxy config.
+# ---------------------------------------------------------
+- name: Deploy Nginx reverse proxy configuration
+  ansible.builtin.template:
+    src: reverse-proxy.conf.j2
+    dest: "/etc/nginx/sites-available/{{ main_domain }}"
+    owner: root
+    group: root
+    mode: '0644'
+  become: true
+  notify: Reload Nginx
+
+- name: Enable Nginx site (final config)
+  ansible.builtin.file:
+    src: "/etc/nginx/sites-available/{{ main_domain }}"
+    dest: "/etc/nginx/sites-enabled/{{ main_domain }}"
+    state: link
+  become: true
+  notify: Reload Nginx
+
+# ---------------------------------------------------------
+# 7. BACKGROUND RENEWAL
+# ---------------------------------------------------------
+- name: Ensure Certbot systemd timer is enabled and running
+  ansible.builtin.systemd:
+    name: certbot.timer
+    enabled: yes
+    state: started
+  become: true
