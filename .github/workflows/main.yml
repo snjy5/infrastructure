@@ -35,6 +35,7 @@ jobs:
 
       - name: Create Vault Password File
         run: |
+          mkdir -p secrets
           echo "$VAULT_PASSWORD" > secrets/vault
           chmod 600 secrets/vault
 
