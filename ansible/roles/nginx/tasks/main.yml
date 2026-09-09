@@ -109,18 +109,21 @@
 
 # ---------------------------------------------------------
 # 5. CERTIFICATES (one per service, under main_domain)
-# The bootstrap vhost above is what actually serves this challenge.
+# Skipped in local/CI runs (skip_ssl_provisioning=true) since
+# Let's Encrypt validates against real public DNS, which never
+# resolves to an ephemeral CI runner.
 # ---------------------------------------------------------
 - name: Check and Generate SSL Certificates for all services
   ansible.builtin.include_tasks: manage_cert.yml
   loop: "{{ services }}"
   loop_control:
     label: "{{ item.name }}.{{ main_domain }}"
+  when: not (skip_ssl_provisioning | default(false) | bool)
 
 # ---------------------------------------------------------
 # 6. DEPLOY FINAL NGINX CONFIG (AFTER certs exist)
-# Overwrites the bootstrap vhost at the same path with the
-# full HTTP-redirect + HTTPS reverse-proxy config.
+# In CI/local runs where certs are skipped, leave the
+# bootstrap HTTP-only vhost in place instead.
 # ---------------------------------------------------------
 - name: Deploy Nginx reverse proxy configuration
   ansible.builtin.template:
@@ -131,6 +134,7 @@
     mode: '0644'
   become: true
   notify: Reload Nginx
+  when: not (skip_ssl_provisioning | default(false) | bool)
 
 - name: Enable Nginx site (final config)
   ansible.builtin.file:
