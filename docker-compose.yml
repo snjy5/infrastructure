@@ -7,6 +7,7 @@ services:
       - USER_UID=1000
       - USER_GID=1000
       - GITEA__database__DB_TYPE=sqlite3
+      - GITEA__security__INSTALL_LOCK=true
     volumes:
       - ./data/gitea:/data
       - /etc/timezone:/etc/timezone:ro

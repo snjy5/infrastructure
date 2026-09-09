@@ -28,12 +28,17 @@ resume_repo_url: https://github.com/snjy5/resume.git
 resume_repo_branch: master
 
 # Nginx / SSL Role Variables
-admin_email: "snjy4@protonmail.com"
+admin_email: "{[ vault_admin_email }}"
 webroot_path: "/var/www/certbot"
 cert_min_days: 30
 
+# gitea install setup
+gitea_admin_username: "{{ vault_gitea_admin_username }}"
+gitea_admin_password: "{{ vault_gitea_admin_password }}"
+gitea_admin_email: "{{ vault_admin_email }}"
+
 # Application config (used by reverse-proxy.conf.j2 template)
-main_domain: "thecatvoid.online"
+main_domain: "{{ vault_main_domain }}"
 services:
   - name: gitea
     port: 3000

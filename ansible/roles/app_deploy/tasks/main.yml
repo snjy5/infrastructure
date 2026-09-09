@@ -52,6 +52,23 @@
     remove_orphans: true
   register: compose_result
 
+- name: Check if Gitea admin user already exists
+  ansible.builtin.command: >
+    docker exec gitea gitea admin user list
+  register: gitea_user_list
+  changed_when: false
+  failed_when: false
+
+- name: Create Gitea admin user if none exists
+  ansible.builtin.command: >
+    docker exec gitea gitea admin user create
+    --username {{ gitea_admin_username }}
+    --password {{ gitea_admin_password }}
+    --email {{ admin_email }}
+    --admin
+  when: gitea_admin_username not in gitea_user_list.stdout
+  no_log: true
+
 # ---------------------------------------------------------
 # POST-DEPLOYMENT HOOKS
 # ---------------------------------------------------------
