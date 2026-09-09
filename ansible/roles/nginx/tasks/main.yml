@@ -114,16 +114,10 @@
   when: port_80_check is failed
 
 # ---------------------------------------------------------
-# 5. CERTIFICATES (one per service, under main_domain)
-# Skipped in local/CI runs (skip_ssl_provisioning=true) since
-# Let's Encrypt validates against real public DNS, which never
-# resolves to an ephemeral CI runner.
+# 5. CERTIFICATE (single SAN cert covering all san_domains)
 # ---------------------------------------------------------
-- name: Check and Generate SSL Certificates for all services
+- name: Check and Generate SAN SSL Certificate
   ansible.builtin.include_tasks: manage_cert.yml
-  loop: "{{ services }}"
-  loop_control:
-    label: "{{ item.name }}.{{ main_domain }}"
   when: not (skip_ssl_provisioning | default(false) | bool)
 
 # ---------------------------------------------------------

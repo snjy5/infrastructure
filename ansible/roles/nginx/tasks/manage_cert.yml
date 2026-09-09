@@ -1,12 +1,15 @@
 # ansible/roles/nginx/tasks/manage_cert.yml
 ---
-- name: Check if SSL certificate is present and valid for {{ item.name }}
+# Checks/renews a single SAN certificate covering every hostname
+# in san_domains. Uses the first domain in the list as the cert's
+# "primary name" for the /etc/letsencrypt/live/ directory path.
+- name: Check if SSL certificate is present and valid
   community.crypto.x509_certificate_info:
-    path: "/etc/letsencrypt/live/{{ item.name }}.{{ main_domain }}/fullchain.pem"
+    path: "/etc/letsencrypt/live/{{ san_domains[0] }}/fullchain.pem"
   register: cert_info
   ignore_errors: yes
 
-- name: Determine if certificate needs issuance/renewal for {{ item.name }}
+- name: Determine if certificate needs issuance/renewal
   ansible.builtin.set_fact:
     needs_cert: >-
       {{
@@ -15,7 +18,7 @@
         ((cert_info.not_after | to_datetime('%Y%m%d%H%M%SZ')) - (ansible_date_time.iso8601 | to_datetime('%Y-%m-%dT%H:%M:%SZ'))).days < cert_min_days
       }}
 
-- name: Obtain or Renew Let's Encrypt Certificate for {{ item.name }}
+- name: Obtain or Renew Let's Encrypt SAN Certificate
   ansible.builtin.command: >
     certbot certonly
     --webroot
@@ -24,6 +27,7 @@
     --agree-tos
     --no-eff-email
     --keep-until-expiring
-    -d {{ item.name }}.{{ main_domain }}
+    {% for domain in san_domains %}-d {{ domain }}
+    {% endfor %}
   when: needs_cert | bool
   notify: Reload Nginx

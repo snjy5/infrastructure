@@ -5,7 +5,7 @@
 {% for app in services %}
 server {
     listen 80;
-    server_name {{ app.name }}.{{ main_domain }};
+    server_name {{ app.hostnames | join(' ') }};
 
     location /.well-known/acme-challenge/ {
         root {{ webroot_path }};

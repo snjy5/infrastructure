@@ -3,10 +3,6 @@
   hosts: webservers
   become: true
 
-  # Standard vars are now auto-loaded from group_vars/webservers.yml
-  vars_files:
-    - ../inventory/group_vars/all/vault.yml
-
   roles:
     - role: common
     - role: geerlingguy.firewall

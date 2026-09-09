@@ -1,55 +1,53 @@
 # ansible/roles/nginx/templates/reverse-proxy.conf.j2
 # Managed by Ansible - Do not edit manually
 
+server {
+    listen 443 ssl http2;
+    server_name www.{{ main_domain }};
+
+    ssl_certificate     /etc/letsencrypt/live/{{ san_domains[0] }}/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/{{ san_domains[0] }}/privkey.pem;
+    ssl_protocols {{ nginx_ssl_protocols }};
+    ssl_ciphers {{ nginx_ssl_ciphers }};
+
+    return 301 https://{{ main_domain }}$request_uri;
+}
+
 {% for app in services %}
-# ---------------------------------------------------------
-# HTTP -> HTTPS Redirect & ACME Challenge for {{ app.name }}
-# ---------------------------------------------------------
 server {
     listen 80;
-    server_name {{ app.name }}.{{ main_domain }};
+    server_name {{ app.hostnames | join(' ') }};
 
-    # Required for Certbot HTTP-01 challenge (Let's Encrypt)
     location /.well-known/acme-challenge/ {
         root {{ webroot_path }};
     }
 
-    # Redirect all other HTTP traffic to HTTPS
     location / {
-        return 301 https://$host$request_uri;
+        return 301 https://{{ app.hostnames[0] }}$request_uri;
     }
 }
 
-# ---------------------------------------------------------
-# HTTPS Reverse Proxy for {{ app.name }}
-# ---------------------------------------------------------
 server {
     listen 443 ssl http2;
-    server_name {{ app.name }}.{{ main_domain }};
+    server_name {{ app.hostnames | join(' ') }};
 
-    # SSL Certificates (Managed by Certbot via Ansible)
-    ssl_certificate     /etc/letsencrypt/live/{{ app.name }}.{{ main_domain }}/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/{{ app.name }}.{{ main_domain }}/privkey.pem;
-
-    # Strong SSL settings
-    ssl_protocols TLSv1.2 TLSv1.3;
-    ssl_ciphers HIGH:!aNULL:!MD5;
+    ssl_certificate     /etc/letsencrypt/live/{{ san_domains[0] }}/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/{{ san_domains[0] }}/privkey.pem;
+    ssl_protocols {{ nginx_ssl_protocols }};
+    ssl_ciphers {{ nginx_ssl_ciphers }};
 
     location / {
         proxy_pass http://127.0.0.1:{{ app.port }};
-        
-        # Standard Proxy Headers
+
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
 
-        # WebSocket support (useful if any app needs it later)
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection "upgrade";
 
-        # Never cache anything - simple and effective for small sites
         proxy_hide_header Cache-Control;
         proxy_hide_header Pragma;
         proxy_hide_header Expires;

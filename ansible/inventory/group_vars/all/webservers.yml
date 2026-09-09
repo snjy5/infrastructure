@@ -4,7 +4,7 @@
 security_ssh_permit_root_login: "no"
 security_ssh_password_authentication: "no"
 security_ssh_x11_forwarding: "no"
-security_ssh_max_auth_trries: 3
+security_ssh_max_auth_tries: 10
 security_fail2ban_enabled: true
 security_autoupdate_enabled: true
 security_autoupdate_reboot: false
@@ -24,23 +24,54 @@ firewall_default_deny_incoming: true
 
 # Custom App Variables
 app_base_dir: /opt/app
-resume_repo_url: https://github.com/snjy5/resume.git
-resume_repo_branch: master
+website_repo_url: https://github.com/snjy5/website.git
+website_repo_branch: master
+
+gitea_image_tag: "1.21.11"
+gitea_port: 3000
+website_port: 8090
+docker_network_name: "infrastructure_net"
+
+gitea_data_dir: "./data/gitea"
+gitea_container_name: "gitea"
+website_container_name: "website"
+website_build_context: "./website-src"
 
 # Nginx / SSL Role Variables
 admin_email: "{{ vault_admin_email }}"
 webroot_path: "/var/www/certbot"
 cert_min_days: 30
+nginx_ssl_protocols: "TLSv1.2 TLSv1.3"
+nginx_ssl_ciphers: "HIGH:!aNULL:!MD5"
+
+
+gitea_uid:  "USER_UID=1000"
+gitea_gid: "USER_GID=1000"
+gitea_db_type: "GITEA__database__DB_TYPE=sqlite3"
+gitea_install_lock: "GITEA__security__INSTALL_LOCK=true"
+
+# Application config (used by reverse-proxy.conf.j2 template)
+main_domain: "{{ vault_main_domain }}"
+
+# Every hostname the single SAN certificate must cover
+san_domains:
+  - "thecatvoid.online"
+  - "www.thecatvoid.online"
+  - "gitea.thecatvoid.online"
 
 # gitea install setup
 gitea_admin_username: "{{ vault_gitea_admin_username }}"
 gitea_admin_password: "{{ vault_gitea_admin_password }}"
 gitea_admin_email: "{{ vault_admin_email }}"
 
-# Application config (used by reverse-proxy.conf.j2 template)
-main_domain: "{{ vault_main_domain }}"
+# handle root & sub domain
 services:
+  - name: website
+    hostnames:
+      - "{{ main_domain }}"
+      - "www.{{ main_domain }}"
+    port: "{{ website_port }}"
   - name: gitea
-    port: 3000
-  - name: resume
-    port: 8090
+    hostnames:
+      - "gitea.{{ main_domain }}"
+    port: "{{ gitea_port }}"

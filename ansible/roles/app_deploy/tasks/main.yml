@@ -9,35 +9,36 @@
     state: directory
     mode: '0755'
 
-- name: Copy docker-compose.yml to server
-  ansible.builtin.copy:
-    src: "{{ playbook_dir }}/../../docker-compose.yml"
+- name: Deploy docker-compose.yml to server from template
+  ansible.builtin.template:
+    src: docker-compose.yml.j2
     dest: "{{ app_base_dir }}/docker-compose.yml"
     mode: '0644'
 
-- name: Check if resume-src already exists
+# Replace the resume tasks with this:
+- name: Check if website-src already exists
   ansible.builtin.stat:
-    path: "{{ app_base_dir }}/resume-src"
-  register: resume_src_stat
+    path: "{{ app_base_dir }}/website-src"
+  register: website_src_stat
 
-- name: Check if resume-src is a valid git repo
+- name: Check if website-src is a valid git repo
   ansible.builtin.stat:
-    path: "{{ app_base_dir }}/resume-src/.git"
-  register: resume_src_git_stat
+    path: "{{ app_base_dir }}/website-src/.git"
+  register: website_src_git_stat
 
-- name: Remove resume-src if present but not a valid git checkout
+- name: Remove website-src if present but not a valid git checkout
   ansible.builtin.file:
-    path: "{{ app_base_dir }}/resume-src"
+    path: "{{ app_base_dir }}/website-src"
     state: absent
-  when: resume_src_stat.stat.exists and not resume_src_git_stat.stat.exists
+  when: website_src_stat.stat.exists and not website_src_git_stat.stat.exists
 
-- name: Clone/update resume repo
+- name: Clone/update website repo
   ansible.builtin.git:
-    repo: "{{ resume_repo_url }}"
-    dest: "{{ app_base_dir }}/resume-src"
-    version: "{{ resume_repo_branch }}"
+    repo: "{{ website_repo_url }}"
+    dest: "{{ app_base_dir }}/website-src"
+    version: "{{ website_repo_branch }}"
     force: true
-  register: resume_repo
+  register: website_repo
 
 # ---------------------------------------------------------
 # DOCKER COMPOSE (Simplified)
@@ -51,6 +52,14 @@
     build: always # Forces build check; only actually builds if Dockerfile/code changed
     remove_orphans: true
   register: compose_result
+
+- name: Wait for Gitea container to be healthy
+  ansible.builtin.command: docker inspect --format='{{ '{{' }}.State.Running{{ '}}' }}' gitea
+  register: gitea_running
+  until: gitea_running.stdout == "true"
+  retries: 10
+  delay: 5
+  changed_when: false
 
 - name: Check if Gitea admin user already exists
   ansible.builtin.command: >
