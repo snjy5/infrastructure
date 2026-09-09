@@ -1,0 +1,29 @@
+# ansible/roles/nginx/tasks/manage_cert.yml
+---
+- name: Check if SSL certificate is present and valid for {{ item.name }}
+  community.crypto.x509_certificate_info:
+    path: "/etc/letsencrypt/live/{{ item.name }}.{{ main_domain }}/fullchain.pem"
+  register: cert_info
+  ignore_errors: yes
+
+- name: Determine if certificate needs issuance/renewal for {{ item.name }}
+  ansible.builtin.set_fact:
+    needs_cert: >-
+      {{
+        cert_info is failed or
+        cert_info.expired or
+        cert_info.not_after_days < cert_min_days
+      }}
+
+- name: Obtain or Renew Let's Encrypt Certificate for {{ item.name }}
+  ansible.builtin.command: >
+    certbot certonly
+    --webroot
+    --webroot-path={{ webroot_path }}
+    --email {{ admin_email }}
+    --agree-tos
+    --no-eff-email
+    --keep-until-expiring
+    -d {{ item.name }}.{{ main_domain }}
+  when: needs_cert | bool
+  notify: Reload Nginx
