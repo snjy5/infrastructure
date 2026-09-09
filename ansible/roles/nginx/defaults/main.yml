@@ -1,0 +1,5 @@
+# defaults/main.yml
+---
+admin_email: "snjy4@protonmail.com"
+cert_min_days: 30
+webroot_path: "/var/www/certbot"

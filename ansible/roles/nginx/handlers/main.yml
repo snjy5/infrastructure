@@ -1,7 +1,13 @@
 # ansible/roles/nginx/handlers/main.yml
 ---
-- name: reload nginx
+- name: Test Nginx configuration
+  ansible.builtin.command: nginx -t
+  listen: "Reload Nginx"
+  changed_when: false
+
+- name: Reload Nginx
   ansible.builtin.service:
     name: nginx
     state: reloaded
   become: true
+  listen: "Reload Nginx"

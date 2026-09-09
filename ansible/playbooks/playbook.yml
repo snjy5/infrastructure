@@ -1,13 +1,11 @@
-# SERVER CONFIGURATION & DEPLOYMENT PLAYBOOK
-# Configures the target server with Docker, Nginx, and starts apps.
-
+---
 - name: Configure Server and Deploy Applications
   hosts: webservers
   become: true
+
+  # Standard vars are now auto-loaded from group_vars/webservers.yml
   vars_files:
     - ../inventory/group_vars/all/vault.yml
-  vars:
-    rebuild_resume: false
 
   roles:
     - role: common
@@ -15,77 +13,4 @@
     - role: geerlingguy.security
     - role: geerlingguy.docker
     - role: nginx
-
-  tasks:
-    - name: Ensure application directory exists on server
-      ansible.builtin.file:
-        path: /opt/app
-        state: directory
-        mode: '0755'
-
-    - name: Copy docker-compose.yml to server
-      ansible.builtin.copy:
-        src: "{{ playbook_dir }}/../../docker-compose.yml"
-        dest: /opt/app/docker-compose.yml
-        mode: '0644'
-
-    - name: Check if resume-src already exists
-      ansible.builtin.stat:
-        path: /opt/app/resume-src
-      register: resume_src_stat
-    
-    - name: Check if resume-src is a valid git repo
-      ansible.builtin.stat:
-        path: /opt/app/resume-src/.git
-      register: resume_src_git_stat
-    
-    - name: Remove resume-src if present but not a valid git checkout
-      ansible.builtin.file:
-        path: /opt/app/resume-src
-        state: absent
-      when: resume_src_stat.stat.exists and not resume_src_git_stat.stat.exists
-    
-    - name: Clone/update resume repo
-      ansible.builtin.git:
-        repo: https://github.com/snjy5/resume.git
-        dest: /opt/app/resume-src
-        version: master
-        force: true
-      register: resume_repo
-
-    - name: Rebuild resume service from local checkout
-      community.docker.docker_compose_v2:
-        project_src: /opt/app
-        services:
-          - resume
-        build: always
-        state: present
-      when: resume_repo is not skipped and resume_repo.changed
-      register: resume_rebuilt
-
-    - name: Deploy all services via Docker Compose
-      community.docker.docker_compose_v2:
-        project_src: /opt/app
-        state: present
-        remove_orphans: true
-
-    - name: Reload nginx after app deployment
-      ansible.builtin.service:
-        name: nginx
-        state: reloaded
-      become: true
-      when: resume_rebuilt is changed
-
-    - name: Flush DNS cache
-      ansible.builtin.command: resolvectl flush-caches
-      changed_when: false
-      become: true
-      when: resume_rebuilt is changed
-
-    - name: Restart resume container after rebuild
-      community.docker.docker_compose_v2:
-        project_src: /opt/app
-        services:
-          - resume
-        state: restarted
-      when: resume_rebuilt is changed
+    - role: app_deploy

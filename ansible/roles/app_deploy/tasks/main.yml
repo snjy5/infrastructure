@@ -1,0 +1,68 @@
+# ansible/roles/app_deploy/tasks/main.yml
+---
+# ---------------------------------------------------------
+# APP DEPLOYMENT
+# ---------------------------------------------------------
+- name: Ensure application directory exists on server
+  ansible.builtin.file:
+    path: "{{ app_base_dir }}"
+    state: directory
+    mode: '0755'
+
+- name: Copy docker-compose.yml to server
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/../../docker-compose.yml"
+    dest: "{{ app_base_dir }}/docker-compose.yml"
+    mode: '0644'
+
+- name: Check if resume-src already exists
+  ansible.builtin.stat:
+    path: "{{ app_base_dir }}/resume-src"
+  register: resume_src_stat
+
+- name: Check if resume-src is a valid git repo
+  ansible.builtin.stat:
+    path: "{{ app_base_dir }}/resume-src/.git"
+  register: resume_src_git_stat
+
+- name: Remove resume-src if present but not a valid git checkout
+  ansible.builtin.file:
+    path: "{{ app_base_dir }}/resume-src"
+    state: absent
+  when: resume_src_stat.stat.exists and not resume_src_git_stat.stat.exists
+
+- name: Clone/update resume repo
+  ansible.builtin.git:
+    repo: "{{ resume_repo_url }}"
+    dest: "{{ app_base_dir }}/resume-src"
+    version: "{{ resume_repo_branch }}"
+    force: true
+  register: resume_repo
+
+# ---------------------------------------------------------
+# DOCKER COMPOSE (Simplified)
+# ---------------------------------------------------------
+# Note: docker_compose_v2 automatically rebuilds/recreates containers
+# if the underlying source code or compose file changed.
+- name: Deploy all services via Docker Compose
+  community.docker.docker_compose_v2:
+    project_src: "{{ app_base_dir }}"
+    state: present
+    build: always # Forces build check; only actually builds if Dockerfile/code changed
+    remove_orphans: true
+  register: compose_result
+
+# ---------------------------------------------------------
+# POST-DEPLOYMENT HOOKS
+# ---------------------------------------------------------
+# Only reload Nginx/Flush DNS if containers actually changed
+- name: Reload Nginx after app deployment
+  ansible.builtin.service:
+    name: nginx
+    state: reloaded
+  when: compose_result.changed
+
+- name: Flush DNS cache
+  ansible.builtin.command: resolvectl flush-caches
+  changed_when: false
+  when: compose_result.changed
