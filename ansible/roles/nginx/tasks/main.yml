@@ -36,6 +36,12 @@
     - /etc/nginx/conf.d/default.conf
   become: true
 
+- name: Remove legacy manually-created vhosts from conf.d
+  ansible.builtin.file:
+    path: /etc/nginx/conf.d/reverse-proxy.conf
+    state: absent
+  become: true
+
 - name: Ensure webroot directory exists for HTTP-01 challenge
   ansible.builtin.file:
     path: "{{ webroot_path }}"
