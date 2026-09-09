@@ -12,7 +12,7 @@
       {{
         cert_info is failed or
         cert_info.expired or
-        cert_info.not_after_days < cert_min_days
+        ((cert_info.not_after | to_datetime('%Y%m%d%H%M%SZ')) - (ansible_date_time.iso8601 | to_datetime('%Y-%m-%dT%H:%M:%SZ'))).days < cert_min_days
       }}
 
 - name: Obtain or Renew Let's Encrypt Certificate for {{ item.name }}
