@@ -49,9 +49,9 @@
       ansible.builtin.git:
         repo: https://github.com/snjy5/resume.git
         dest: /opt/app/resume-src
+        version: master
         force: true
       register: resume_repo
-      when: (rebuild_resume | bool) or (not resume_src_stat.stat.exists) or (resume_src_stat.stat.exists and not resume_src_git_stat.stat.exists)
 
     - name: Rebuild resume service from local checkout
       community.docker.docker_compose_v2:
