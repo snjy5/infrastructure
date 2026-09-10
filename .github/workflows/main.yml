@@ -21,7 +21,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Install Ansible
-        run: pip install ansible
+        run: sudo apt-get update && sudo apt-get install -y ansible
 
       - name: Install Terraform
         uses: hashicorp/setup-terraform@v3
