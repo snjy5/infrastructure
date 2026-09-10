@@ -1,0 +1,29 @@
+# Managed by Ansible - Do not edit manually
+services:
+  gitea:
+    image: "gitea/gitea:{{ gitea_image_tag }}"
+    container_name: "{{ gitea_container_name }}"
+    restart: unless-stopped
+    environment:
+      - {{ gitea_uid }}
+      - {{ gitea_gid }}
+      - {{ gitea_db_type }}
+      - {{ gitea_install_lock }}
+    volumes:
+      - "{{ gitea_data_dir }}:/data"
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+    ports:
+      - "127.0.0.1:{{ gitea_port }}:3000"
+
+  website:
+    build:
+      context: "{{ website_build_context }}"
+    container_name: "{{ website_container_name }}"
+    ports:
+      - "127.0.0.1:{{ website_port }}:80"
+    restart: unless-stopped
+
+networks:
+  default:
+    name: "{{ docker_network_name }}"

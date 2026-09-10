@@ -1,20 +1,23 @@
-terraform/*.tfstate
-terraform/*.tfstate.backup
-terraform/*.log
-terraform/ec2-deploy.log
-terraform/.terraform/
-terraform/.terraform.lock.hcl
+# quick git ref:
+# 1. dir/ = matches dir recursively
+# 2. dir = same as 1. but also files
+# 3. /dir/ = only match in root/same dir as .gitignore
+# 4. dir/* = contents & dirs directly inside, not whats inside them
+# 5. dir/** = like 4. but goes into all subdirs too
+
+/terraform/*.tfstate
+/terraform/*.tfstate.backup
+/terraform/.terraform/
+/terraform/.terraform.lock.hcl
 
 # secrets for ansible-vault, just being thorough
-secrets
-secrets/
-secrets/**
+/secrets/
 
 # terraform generates remote hostname/ip/inventory
-ansible/inventory/production.ini
+/ansible/inventory/production.ini
 
 # Ansible backups
-**/*.bak
+*.bak
 
 # IDE and OS files
 .idea/
@@ -22,6 +25,9 @@ ansible/inventory/production.ini
 *.swp
 .DS_Store
 
-# local testing downloaded ansible requirememt files
-roles/
-collections/
+# logs & misc
+*.log
+
+# local testing downloaded ansible requirement files
+/roles/
+/collections/
