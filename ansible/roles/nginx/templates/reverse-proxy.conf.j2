@@ -1,19 +1,9 @@
 # ansible/roles/nginx/templates/reverse-proxy.conf.j2
 # Managed by Ansible - Do not edit manually
 
-server {
-    listen 443 ssl http2;
-    server_name www.{{ main_domain }};
-
-    ssl_certificate     /etc/letsencrypt/live/{{ san_domains[0] }}/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/{{ san_domains[0] }}/privkey.pem;
-    ssl_protocols {{ nginx_ssl_protocols }};
-    ssl_ciphers {{ nginx_ssl_ciphers }};
-
-    return 301 https://{{ main_domain }}$request_uri;
-}
-
 {% for app in services %}
+
+# --- HTTP -> HTTPS Redirect ---
 server {
     listen 80;
     server_name {{ app.hostnames | join(' ') }};
@@ -23,10 +13,11 @@ server {
     }
 
     location / {
-        return 301 https://{{ app.hostnames[0] }}$request_uri;
+        return 301 https://$host$request_uri;
     }
 }
 
+# --- HTTPS Reverse Proxy ---
 server {
     listen 443 ssl http2;
     server_name {{ app.hostnames | join(' ') }};
