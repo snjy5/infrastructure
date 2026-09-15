@@ -52,10 +52,13 @@
   become: true
 
 # ---------------------------------------------------------
-# 3. BOOTSTRAP: deploy a cert-free HTTP-only vhost so nginx
-# has something to listen on before any certificate exists.
-# This is what makes the ACME HTTP-01 challenge possible at all.
+# 3. BOOTSTRAP (Only if cert doesn't exist yet)
 # ---------------------------------------------------------
+- name: Check if SSL certificate already exists
+  ansible.builtin.stat:
+    path: "/etc/letsencrypt/live/{{ san_domains[0] }}/fullchain.pem"
+  register: ssl_cert_stat
+
 - name: Deploy temporary ACME-challenge-only vhost
   ansible.builtin.template:
     src: acme-challenge.conf.j2
@@ -64,6 +67,7 @@
     group: root
     mode: '0644'
   become: true
+  when: not ssl_cert_stat.stat.exists  # <--- CRITICAL FIX
 
 - name: Enable Nginx site (bootstrap config)
   ansible.builtin.file:
@@ -71,6 +75,7 @@
     dest: "/etc/nginx/sites-enabled/{{ main_domain }}"
     state: link
   become: true
+  when: not ssl_cert_stat.stat.exists
 
 - name: Validate Nginx configuration before starting
   ansible.builtin.command: nginx -t
@@ -84,6 +89,7 @@
     enabled: true
     daemon_reload: true
   become: true
+  when: not ssl_cert_stat.stat.exists
 
 # ---------------------------------------------------------
 # 4. PRE-FLIGHT CHECK (Port 80 availability)
@@ -114,16 +120,14 @@
   when: port_80_check is failed
 
 # ---------------------------------------------------------
-# 5. CERTIFICATE (single SAN cert covering all san_domains)
+# 5. CERTIFICATE
 # ---------------------------------------------------------
 - name: Check and Generate SAN SSL Certificate
   ansible.builtin.include_tasks: manage_cert.yml
   when: not (skip_ssl_provisioning | default(false) | bool)
 
 # ---------------------------------------------------------
-# 6. DEPLOY FINAL NGINX CONFIG (AFTER certs exist)
-# In CI/local runs where certs are skipped, leave the
-# bootstrap HTTP-only vhost in place instead.
+# 6. DEPLOY FINAL NGINX CONFIG
 # ---------------------------------------------------------
 - name: Deploy Nginx reverse proxy configuration
   ansible.builtin.template:
@@ -133,7 +137,7 @@
     group: root
     mode: '0644'
   become: true
-  notify: Reload Nginx
+  register: final_nginx_conf
   when: not (skip_ssl_provisioning | default(false) | bool)
 
 - name: Enable Nginx site (final config)
@@ -142,14 +146,18 @@
     dest: "/etc/nginx/sites-enabled/{{ main_domain }}"
     state: link
   become: true
-  notify: Reload Nginx
+  when: not (skip_ssl_provisioning | default(false) | bool)
 
-# ---------------------------------------------------------
-# 7. BACKGROUND RENEWAL
-# ---------------------------------------------------------
-- name: Ensure Certbot systemd timer is enabled and running
-  ansible.builtin.systemd:
-    name: certbot.timer
-    enabled: yes
-    state: started
+# Validate BEFORE restarting so we don't kill Nginx if Jinja made a typo
+- name: Validate final Nginx configuration
+  ansible.builtin.command: nginx -t
+  changed_when: false
   become: true
+  when: final_nginx_conf is changed
+
+- name: Restart Nginx to apply final config
+  ansible.builtin.systemd:
+    name: nginx
+    state: restarted
+  become: true
+  when: final_nginx_conf is changed
