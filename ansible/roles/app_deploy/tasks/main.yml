@@ -45,6 +45,19 @@
 # ---------------------------------------------------------
 # Note: docker_compose_v2 automatically rebuilds/recreates containers
 # if the underlying source code or compose file changed.
+
+# Docker implicitly punches hole through firewall
+# lets assist it by reloading/resetting docker by handler
+- name: Queue Docker restart
+  ansible.builtin.debug:
+    msg: "Queueing Docker restart to fix iptables"
+  changed_when: true
+  notify: "Reload Docker"
+
+# Force the queued handler to run RIGHT NOW
+- name: Flush handlers to execute Docker restart
+  ansible.builtin.meta: flush_handlers
+
 - name: Deploy all services via Docker Compose
   community.docker.docker_compose_v2:
     project_src: "{{ app_base_dir }}"

@@ -4,6 +4,7 @@
   become: true
 
   roles:
+    - role: common_handlers
     - role: common
     - role: geerlingguy.firewall
     - role: geerlingguy.security
