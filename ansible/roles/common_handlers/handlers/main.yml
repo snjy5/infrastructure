@@ -1,4 +1,4 @@
- ---
+---
 # roles/common_handlers/handlers/main.yml
 - name: Restart Docker globally
   ansible.builtin.systemd:
