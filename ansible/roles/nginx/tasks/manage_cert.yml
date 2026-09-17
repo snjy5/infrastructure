@@ -1,8 +1,5 @@
 # ansible/roles/nginx/tasks/manage_cert.yml
 ---
-# Checks/renews a single SAN certificate covering every hostname
-# in san_domains. Uses the first domain in the list as the cert's
-# "primary name" for the /etc/letsencrypt/live/ directory path.
 - name: Check if SSL certificate is present and valid
   community.crypto.x509_certificate_info:
     path: "/etc/letsencrypt/live/{{ san_domains[0] }}/fullchain.pem"
@@ -14,9 +11,13 @@
     needs_cert: >-
       {{
         cert_info is failed or
-        cert_info.expired or
-        (cert_info.not_after | to_datetime('%Y%m%d%H%M%SZ') - ansible_date_time.iso8601 | to_datetime('%Y-%m-%dT%H:%M:%SZ')).days < cert_min_days
+        cert_info.expired | default(false) or
+        ((cert_info.not_after | to_datetime('%Y%m%d%H%M%SZ')) - (ansible_facts['date_time']['iso8601'] | to_datetime('%Y-%m-%dT%H:%M:%SZ'))).days < (cert_min_days | int)
       }}
+
+- name: Debug certificate status
+  ansible.builtin.debug:
+    msg: "Certificate needs issuance/renewal: {{ needs_cert }}"
 
 - name: Obtain or Renew Let's Encrypt SAN Certificate
   ansible.builtin.command: >
@@ -26,8 +27,10 @@
     --email {{ admin_email }}
     --agree-tos
     --no-eff-email
+    --non-interactive
     --keep-until-expiring
-    {% for domain in san_domains %}-d {{ domain }}
-    {% endfor %}
+    {% for domain in san_domains %} -d {{ domain }}{% endfor %}
   when: needs_cert | bool
+  async: 300  # Hard stop after 5 minutes so CI doesn't hang forever
+  poll: 10    # Check status every 10 seconds
   notify: Reload Nginx
