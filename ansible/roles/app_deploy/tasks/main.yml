@@ -1,22 +1,18 @@
 # ansible/roles/app_deploy/tasks/main.yml
 ---
 # ---------------------------------------------------------
-# APP DEPLOYMENT
+# APP DEPLOYMENT (Multi-Site Ready, Idempotent)
 # ---------------------------------------------------------
-- name: Ensure application directory exists on server
+- name: Ensure application directory exists
   ansible.builtin.file:
     path: "{{ app_base_dir }}"
     state: directory
     mode: '0755'
 
-- name: Deploy docker-compose.yml to server from template
-  ansible.builtin.template:
-    src: docker-compose.yml.j2
-    dest: "{{ app_base_dir }}/docker-compose.yml"
-    mode: '0644'
-
-# Replace the resume tasks with this:
-- name: Check if website-src already exists
+# ---------------------------------------------------------
+# WEBSITE SOURCE
+# ---------------------------------------------------------
+- name: Check if website-src exists
   ansible.builtin.stat:
     path: "{{ app_base_dir }}/website-src"
   register: website_src_stat
@@ -41,33 +37,33 @@
   register: website_repo
 
 # ---------------------------------------------------------
-# DOCKER COMPOSE (Simplified)
+# DOCKER COMPOSE
 # ---------------------------------------------------------
-# Note: docker_compose_v2 automatically rebuilds/recreates containers
-# if the underlying source code or compose file changed.
+# build: policy correctly detects changes via Docker build cache
+# because website_build_context points to ./website-src (COPY invalidates cache)
 
-# Docker implicitly punches hole through firewall
-# lets assist it by reloading/resetting docker by handler
-- name: Queue Docker restart
-  ansible.builtin.debug:
-    msg: "Queueing Docker restart to fix iptables"
-  changed_when: true
-  notify: "Reload Docker"
-
-# Force the queued handler to run RIGHT NOW
-- name: Flush handlers to execute Docker restart
-  ansible.builtin.meta: flush_handlers
+- name: Deploy docker-compose.yml from template
+  ansible.builtin.template:
+    src: docker-compose.yml.j2
+    dest: "{{ app_base_dir }}/docker-compose.yml"
+    mode: '0644'
+  register: compose_file
 
 - name: Deploy all services via Docker Compose
   community.docker.docker_compose_v2:
     project_src: "{{ app_base_dir }}"
     state: present
-    build: always # Forces build check; only actually builds if Dockerfile/code changed
+    build: policy
+    recreate: auto
     remove_orphans: true
   register: compose_result
 
-- name: Wait for Gitea container to be healthy
-  ansible.builtin.command: docker inspect --format='{{ '{{' }}.State.Running{{ '}}' }}' gitea
+# ---------------------------------------------------------
+# GITEA BOOTSTRAP
+# ---------------------------------------------------------
+- name: Wait for Gitea container to be running
+  ansible.builtin.command: >
+    docker inspect --format='{{ '{{' }}.State.Running{{ '}}' }}' gitea
   register: gitea_running
   until: gitea_running.stdout == "true"
   retries: 10
@@ -94,14 +90,13 @@
 # ---------------------------------------------------------
 # POST-DEPLOYMENT HOOKS
 # ---------------------------------------------------------
-# Only reload Nginx/Flush DNS if containers actually changed
-- name: Reload Nginx after app deployment
+- name: Reload Nginx after deployment changes
   ansible.builtin.service:
     name: nginx
     state: reloaded
-  when: compose_result.changed
+  when: compose_result.changed or compose_file.changed
 
 - name: Flush DNS cache
   ansible.builtin.command: resolvectl flush-caches
   changed_when: false
-  when: compose_result.changed
+  when: compose_result.changed or compose_file.changed

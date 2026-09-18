@@ -1,12 +1,5 @@
 ---
 # roles/common_handlers/handlers/main.yml
-- name: Restart Docker globally
-  ansible.builtin.systemd:
-    name: docker
-    state: restarted
-  become: true
-  listen: "Reload Docker"
-
 - name: Test Nginx configuration
   ansible.builtin.command: nginx -t
   become: true
