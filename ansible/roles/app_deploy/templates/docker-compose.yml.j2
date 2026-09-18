@@ -19,7 +19,8 @@ services:
   website:
     build:
       context: "{{ website_build_context }}"
-    image: local/website:{{ website_repo_branch }}
+    image: "website:{{ website_repo_branch }}"
+    pull_policy: never
     container_name: "{{ website_container_name }}"
     ports:
       - "127.0.0.1:{{ website_port }}:80"
