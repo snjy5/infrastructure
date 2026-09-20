@@ -42,17 +42,6 @@
 # build: policy correctly detects changes via Docker build cache
 # because website_build_context points to ./website-src (COPY invalidates cache)
 
-# ---------------------------------------------------------
-# CLEANUP STALE CONTAINERS
-# ---------------------------------------------------------
-- name: Force-remove stale containers from previous runs
-  ansible.builtin.command: "docker rm -f {{ item }}"
-  loop:
-    - "{{ website_container_name }}"
-    - "{{ gitea_container_name }}"
-  failed_when: false
-  changed_when: false
-
 - name: Deploy docker-compose.yml from template
   ansible.builtin.template:
     src: docker-compose.yml.j2
