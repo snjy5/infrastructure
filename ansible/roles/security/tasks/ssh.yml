@@ -1,5 +1,18 @@
-# ansible/roles/security/tasks/ssh.yml
+# roles/security/tasks/ssh.yml
 ---
+- name: Ensure OpenSSH server is installed
+  ansible.builtin.apt:
+    name: openssh-server
+    state: present
+  become: true
+
+- name: Ensure privilege separation directory exists
+  ansible.builtin.file:
+    path: /run/sshd
+    state: directory
+    mode: '0755'
+  become: true
+
 - name: Ensure sshd_config.d directory exists
   ansible.builtin.file:
     path: /etc/ssh/sshd_config.d
