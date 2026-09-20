@@ -32,7 +32,7 @@ gitea_port: 3000
 website_port: 8090
 docker_network_name: "infrastructure_net"
 
-gitea_data_dir: "./data/gitea"
+gitea_data_dir: "{{ app_base_dir }}/data/gitea"
 gitea_container_name: "gitea"
 website_container_name: "website"
 website_build_context: "./website-src"
@@ -52,12 +52,6 @@ gitea_install_lock: "GITEA__security__INSTALL_LOCK=true"
 # Application config (used by reverse-proxy.conf.j2 template)
 main_domain: "{{ vault_main_domain }}"
 
-# Every hostname the single SAN certificate must cover
-san_domains:
-  - "thecatvoid.online"
-  - "www.thecatvoid.online"
-  - "gitea.thecatvoid.online"
-
 # gitea install setup
 gitea_admin_username: "{{ vault_gitea_admin_username }}"
 gitea_admin_password: "{{ vault_gitea_admin_password }}"
@@ -70,7 +64,11 @@ services:
       - "{{ main_domain }}"
       - "www.{{ main_domain }}"
     port: "{{ website_port }}"
+
   - name: gitea
     hostnames:
       - "gitea.{{ main_domain }}"
     port: "{{ gitea_port }}"
+
+# Extract all hostnames from all services into one list, and remove duplicates
+all_domains: "{{ services | map(attribute='hostnames') | flatten | unique }}"

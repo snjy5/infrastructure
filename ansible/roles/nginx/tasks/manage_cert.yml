@@ -2,7 +2,7 @@
 ---
 - name: Check if SSL certificate is present and valid
   community.crypto.x509_certificate_info:
-    path: "/etc/letsencrypt/live/{{ san_domains[0] }}/fullchain.pem"
+    path: "/etc/letsencrypt/live/{{ main_domain }}/fullchain.pem"
   register: cert_info
   ignore_errors: yes
 
@@ -20,16 +20,11 @@
     msg: "Certificate needs issuance/renewal: {{ needs_cert }}"
 
 - name: Obtain or Renew Let's Encrypt SAN Certificate
-  ansible.builtin.command: >
-    certbot certonly
-    --webroot
-    --webroot-path={{ webroot_path }}
-    --email {{ admin_email }}
-    --agree-tos
-    --no-eff-email
-    --non-interactive
-    --keep-until-expiring
-    {% for domain in san_domains %} -d {{ domain }}{% endfor %}
+  command: >
+    certbot certonly --webroot -w {{ webroot_path }}
+    --cert-name {{ main_domain }}
+    -d {{ all_domains | join(' -d ') }}
+    --non-interactive --agree-tos --email admin@{{ main_domain }}
   when: needs_cert | bool
   async: 300  # Hard stop after 5 minutes so CI doesn't hang forever
   poll: 10    # Check status every 10 seconds

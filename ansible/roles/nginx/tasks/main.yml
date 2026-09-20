@@ -56,7 +56,7 @@
 # ---------------------------------------------------------
 - name: Check if SSL certificate already exists
   ansible.builtin.stat:
-    path: "/etc/letsencrypt/live/{{ san_domains[0] }}/fullchain.pem"
+    path: "/etc/letsencrypt/live/{{ main_domain }}/fullchain.pem"
   register: ssl_cert_stat
 
 - name: Deploy temporary ACME-challenge-only vhost
