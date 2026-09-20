@@ -44,7 +44,6 @@ cert_min_days: 30
 nginx_ssl_protocols: "TLSv1.2 TLSv1.3"
 nginx_ssl_ciphers: "HIGH:!aNULL:!MD5"
 
-
 gitea_uid:  "USER_UID=1000"
 gitea_gid: "USER_GID=1000"
 gitea_db_type: "GITEA__database__DB_TYPE=sqlite3"
