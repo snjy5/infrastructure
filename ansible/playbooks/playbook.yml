@@ -10,4 +10,4 @@
     - role: security
     - role: geerlingguy.docker
     - role: nginx
-    - role: app_deploy
+    - role: containers
