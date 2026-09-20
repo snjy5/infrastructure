@@ -1,26 +1,66 @@
 # ansible/inventory/group_vars/webservers.yml
 
-# geerlingguy.security - SSH hardening
-security_ssh_permit_root_login: "no"
-security_ssh_password_authentication: "no"
-security_ssh_x11_forwarding: "no"
-security_ssh_max_auth_tries: 10
-security_fail2ban_enabled: false
-security_autoupdate_enabled: true
-security_autoupdate_reboot: false
+# ---------------------------------------------------------
+# FIREWALL (UFW)
+# ---------------------------------------------------------
+security_firewall_enabled: true
+security_firewall_state: "enabled" # enabled | disabled
+security_firewall_logging: "low"   # off | low | medium | high | full
 
-# geerlingguy.docker
-docker_install_compose_plugin: true
-
-# geerlingguy.firewall
-firewall_allowed_tcp_ports:
+security_firewall_allowed_tcp_ports:
   - "22"
   - "80"
   - "443"
-firewall_allowed_udp_ports:
-  - "51820"
-firewall_state: "started"
-firewall_default_deny_incoming: true
+security_firewall_allowed_udp_ports:
+  - "51820" # Wireguard
+security_firewall_default_incoming: "deny"
+security_firewall_default_outgoing: "allow"
+
+# Optional: Allow specific subnets/IPs to bypass restrictions (e.g., WireGuard, internal)
+security_firewall_allow_from: []
+# Example:
+# - { ip: "10.0.0.0/8", port: "8080", proto: "tcp" }
+
+# ---------------------------------------------------------
+#  SSH HARDENING
+# ---------------------------------------------------------
+security_ssh_port: 22
+security_ssh_permit_root_login: "no"
+security_ssh_password_authentication: "no"
+security_ssh_pubkey_authentication: "yes"
+security_ssh_x11_forwarding: "no"
+security_ssh_max_auth_tries: 3
+security_ssh_client_alive_interval: 300
+security_ssh_client_alive_count_max: 2
+security_ssh_allow_users: "admin" # e.g., "admin deploy" (empty = allow all valid users)
+
+# ---------------------------------------------------------
+# FAIL2BAN (Lenient & Safe)
+# ---------------------------------------------------------
+security_fail2ban_enabled: true
+security_fail2ban_bantime: "1h"
+security_fail2ban_findtime: "10m"
+security_fail2ban_maxretry: 5
+
+# Add your CI runner, office IP, or monitoring tools here so you never lock yourself out.
+security_fail2ban_ignoreip:
+  - "127.0.0.1/8"
+  - "::1"
+
+# Jails to enable
+security_fail2ban_jails:
+  - sshd
+
+# ---------------------------------------------------------
+# UNATTENDED UPGRADES
+# ---------------------------------------------------------
+security_autoupdate_enabled: true
+security_autoupdate_reboot: false
+security_autoupdate_reboot_time: "03:00"
+security_autoupdate_mail_to: "" # Leave empty to disable mail
+
+# geerlingguy.docker
+docker_install_compose_plugin: true
 
 # Custom App Variables
 app_base_dir: /opt/app
@@ -35,7 +75,7 @@ docker_network_name: "infrastructure_net"
 gitea_data_dir: "{{ app_base_dir }}/data/gitea"
 gitea_container_name: "gitea"
 website_container_name: "website"
-website_build_context: "./website-src"
+website_build_context: "{{ app_base_dir }}/website-src"
 
 # Nginx / SSL Role Variables
 admin_email: "{{ vault_admin_email }}"

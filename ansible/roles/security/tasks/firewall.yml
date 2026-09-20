@@ -1,0 +1,61 @@
+# roles/security/tasks/firewall.yml
+---
+- name: Install UFW
+  ansible.builtin.apt:
+    name: ufw
+    state: present
+  become: true
+
+# DO THIS FIRST to prevent lockouts
+- name: Ensure SSH port is allowed before applying policies
+  community.general.ufw:
+    rule: allow
+    port: "{{ security_ssh_port | string }}"
+    proto: tcp
+  become: true
+
+- name: Set UFW default policies
+  community.general.ufw:
+    direction: "{{ item.direction }}"
+    policy: "{{ item.policy }}"
+  loop:
+    - { direction: 'incoming', policy: "{{ security_firewall_default_incoming }}" }
+    - { direction: 'outgoing', policy: "{{ security_firewall_default_outgoing }}" }
+  become: true
+
+- name: Allow TCP ports
+  community.general.ufw:
+    rule: allow
+    port: "{{ item }}"
+    proto: tcp
+  loop: "{{ security_firewall_allowed_tcp_ports }}"
+  become: true
+
+- name: Allow UDP ports
+  community.general.ufw:
+    rule: allow
+    port: "{{ item }}"
+    proto: udp
+  loop: "{{ security_firewall_allowed_udp_ports }}"
+  when: security_firewall_allowed_udp_ports | length > 0
+  become: true
+
+- name: Allow specific IP/Subnet rules
+  community.general.ufw:
+    rule: allow
+    src: "{{ item.ip }}"
+    port: "{{ item.port | default(omit) }}"
+    proto: "{{ item.proto | default('any') }}"
+  loop: "{{ security_firewall_allow_from }}"
+  when: security_firewall_allow_from | length > 0
+  become: true
+
+- name: Set UFW logging
+  community.general.ufw:
+    logging: "{{ security_firewall_logging }}"
+  become: true
+
+- name: Enable UFW
+  community.general.ufw:
+    state: "{{ security_firewall_state }}"
+  become: true

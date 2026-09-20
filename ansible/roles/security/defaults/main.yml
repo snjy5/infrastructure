@@ -1,0 +1,35 @@
+# roles/security/defaults/main.yml
+---
+security_firewall_enabled: true
+security_firewall_state: "enabled"
+security_firewall_logging: "low"
+security_firewall_allowed_tcp_ports: []
+security_firewall_allowed_udp_ports: []
+security_firewall_default_incoming: "deny"
+security_firewall_default_outgoing: "allow"
+security_firewall_allow_from: []
+
+security_ssh_port: 22
+security_ssh_permit_root_login: "no"
+security_ssh_password_authentication: "no"
+security_ssh_pubkey_authentication: "yes"
+security_ssh_x11_forwarding: "no"
+security_ssh_max_auth_tries: 3
+security_ssh_client_alive_interval: 300
+security_ssh_client_alive_count_max: 2
+security_ssh_allow_users: ""
+
+security_fail2ban_enabled: true
+security_fail2ban_bantime: "1h"
+security_fail2ban_findtime: "10m"
+security_fail2ban_maxretry: 5
+security_fail2ban_ignoreip:
+  - "127.0.0.1/8"
+  - "::1"
+security_fail2ban_jails:
+  - sshd
+
+security_autoupdate_enabled: true
+security_autoupdate_reboot: false
+security_autoupdate_reboot_time: "03:00"
+security_autoupdate_mail_to: ""

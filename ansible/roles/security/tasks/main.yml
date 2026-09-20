@@ -1,0 +1,25 @@
+# ansible/roles/security/tasks/main.yml
+---
+- name: Remove conflicting firewalls (iptables-persistent, firewalld)
+  ansible.builtin.apt:
+    name:
+      - firewalld
+      - iptables-persistent
+    state: absent
+    purge: true
+  become: true
+
+- name: Configure Firewall (UFW)
+  ansible.builtin.include_tasks: firewall.yml
+  when: security_firewall_enabled | bool
+
+- name: Configure SSH Hardening
+  ansible.builtin.include_tasks: ssh.yml
+
+- name: Configure Fail2ban
+  ansible.builtin.include_tasks: fail2ban.yml
+  when: security_fail2ban_enabled | bool
+
+- name: Configure Unattended Upgrades
+  ansible.builtin.include_tasks: updates.yml
+  when: security_autoupdate_enabled | bool

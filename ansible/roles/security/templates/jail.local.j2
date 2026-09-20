@@ -1,0 +1,17 @@
+# Managed by Ansible - Do not edit manually
+
+[DEFAULT]
+# CRITICAL: Force single IP bans. No subnets.
+banaction = iptables-multiport[name=%(__name__)s, bantime="%(bantime)s", port="%(port)s", protocol="%(protocol)s", chain="%(chain)s"]
+banaction_allports = iptables-allports[name=%(__name__)s, bantime="%(bantime)s", port="%(port)s", protocol="%(protocol)s", chain="%(chain)s"]
+
+bantime  = {{ security_fail2ban_bantime }}
+findtime = {{ security_fail2ban_findtime }}
+maxretry = {{ security_fail2ban_maxretry }}
+
+ignoreip = {{ security_fail2ban_ignoreip | join(' ') }}
+
+{% for jail in security_fail2ban_jails %}
+[{{ jail }}]
+enabled = true
+{% endfor %}
