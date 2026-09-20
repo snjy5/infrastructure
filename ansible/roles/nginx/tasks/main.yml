@@ -67,7 +67,7 @@
     group: root
     mode: '0644'
   become: true
-  when: not ssl_cert_stat.stat.exists  # <--- CRITICAL FIX
+  when: not ssl_cert_stat.stat.exists
 
 - name: Enable Nginx site (bootstrap config)
   ansible.builtin.file:
@@ -124,7 +124,6 @@
 # ---------------------------------------------------------
 - name: Check and Generate SAN SSL Certificate
   ansible.builtin.include_tasks: manage_cert.yml
-  when: not (skip_ssl_provisioning | default(false) | bool)
 
 # ---------------------------------------------------------
 # 6. DEPLOY FINAL NGINX CONFIG
@@ -138,7 +137,6 @@
     mode: '0644'
   become: true
   register: final_nginx_conf
-  when: not (skip_ssl_provisioning | default(false) | bool)
 
 - name: Enable Nginx site (final config)
   ansible.builtin.file:
@@ -146,7 +144,6 @@
     dest: "/etc/nginx/sites-enabled/{{ main_domain }}"
     state: link
   become: true
-  when: not (skip_ssl_provisioning | default(false) | bool)
 
 # Validate BEFORE restarting so we don't kill Nginx if Jinja made a typo
 - name: Validate final Nginx configuration

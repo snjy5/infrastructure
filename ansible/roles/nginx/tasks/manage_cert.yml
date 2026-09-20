@@ -1,31 +1,75 @@
 # ansible/roles/nginx/tasks/manage_cert.yml
 ---
-- name: Check if SSL certificate is present and valid
-  community.crypto.x509_certificate_info:
-    path: "/etc/letsencrypt/live/{{ main_domain }}/fullchain.pem"
-  register: cert_info
-  ignore_errors: yes
+# ---------------------------------------------------------
+# CI / DUMMY CERTIFICATE GENERATION
+# ---------------------------------------------------------
+- name: Generate Dummy Self-Signed Certificate for CI
+  block:
+    - name: Ensure Let's Encrypt live directory exists for dummy cert
+      ansible.builtin.file:
+        path: "/etc/letsencrypt/live/{{ main_domain }}"
+        state: directory
+        mode: '0755'
+      become: true
 
-- name: Determine if certificate needs issuance/renewal
-  ansible.builtin.set_fact:
-    needs_cert: >-
-      {{
-        cert_info is failed or
-        cert_info.expired | default(false) or
-        ((cert_info.not_after | to_datetime('%Y%m%d%H%M%SZ')) - (ansible_facts['date_time']['iso8601'] | to_datetime('%Y-%m-%dT%H:%M:%SZ'))).days < (cert_min_days | int)
-      }}
+    - name: Generate dummy private key
+      community.crypto.openssl_privatekey:
+        path: "/etc/letsencrypt/live/{{ main_domain }}/privkey.pem"
+        type: RSA
+        size: 2048
+      become: true
 
-- name: Debug certificate status
-  ansible.builtin.debug:
-    msg: "Certificate needs issuance/renewal: {{ needs_cert }}"
+    - name: Generate dummy CSR
+      community.crypto.openssl_csr:
+        path: "/tmp/dummy.csr"
+        privatekey_path: "/etc/letsencrypt/live/{{ main_domain }}/privkey.pem"
+        common_name: "{{ main_domain }}"
+        subject_alt_name: "{{ all_domains | map('regex_replace', '^', 'DNS:') | list }}"
+      become: true
 
-- name: Obtain or Renew Let's Encrypt SAN Certificate
-  command: >
-    certbot certonly --webroot -w {{ webroot_path }}
-    --cert-name {{ main_domain }}
-    -d {{ all_domains | join(' -d ') }}
-    --non-interactive --agree-tos --email admin@{{ main_domain }}
-  when: needs_cert | bool
-  async: 300  # Hard stop after 5 minutes so CI doesn't hang forever
-  poll: 10    # Check status every 10 seconds
-  notify: Reload Nginx
+    - name: Generate dummy self-signed certificate
+      community.crypto.x509_certificate:
+        path: "/etc/letsencrypt/live/{{ main_domain }}/fullchain.pem"
+        privatekey_path: "/etc/letsencrypt/live/{{ main_domain }}/privkey.pem"
+        csr_path: "/tmp/dummy.csr"
+        provider: selfsigned
+      become: true
+
+  when: skip_ssl_provisioning | default(false) | bool
+
+# ---------------------------------------------------------
+# PRODUCTION LET'S ENCRYPT
+# ---------------------------------------------------------
+- name: Check and Generate Real SAN SSL Certificate
+  block:
+    - name: Check if SSL certificate is present and valid
+      community.crypto.x509_certificate_info:
+        path: "/etc/letsencrypt/live/{{ main_domain }}/fullchain.pem"
+      register: cert_info
+      ignore_errors: yes
+
+    - name: Determine if certificate needs issuance/renewal
+      ansible.builtin.set_fact:
+        needs_cert: >-
+          {{
+            cert_info is failed or
+            cert_info.expired | default(false) or
+            ((cert_info.not_after | to_datetime('%Y%m%d%H%M%SZ')) - (ansible_facts['date_time']['iso8601'] | to_datetime('%Y-%m-%dT%H:%M:%SZ'))).days < (cert_min_days | int)
+          }}
+
+    - name: Debug certificate status
+      ansible.builtin.debug:
+        msg: "Certificate needs issuance/renewal: {{ needs_cert }}"
+
+    - name: Obtain or Renew Let's Encrypt SAN Certificate
+      command: >
+        certbot certonly --webroot -w {{ webroot_path }}
+        --cert-name {{ main_domain }}
+        -d {{ all_domains | join(' -d ') }}
+        --non-interactive --agree-tos --email admin@{{ main_domain }}
+      when: needs_cert | bool
+      async: 300
+      poll: 10
+      notify: Reload Nginx
+
+  when: not (skip_ssl_provisioning | default(false) | bool)
