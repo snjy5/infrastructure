@@ -24,7 +24,12 @@
         path: "/tmp/dummy.csr"
         privatekey_path: "/etc/letsencrypt/live/{{ main_domain }}/privkey.pem"
         common_name: "{{ main_domain }}"
-        subject_alt_name: "{{ all_domains | map('regex_replace', '^', 'DNS:') | list }}"
+        subject_alt_name: >-
+          {{
+            (all_domains | default([main_domain]))
+            | map('regex_replace', '^', 'DNS:')
+            | list
+          }}
       become: true
 
     - name: Generate dummy self-signed certificate
@@ -38,34 +43,82 @@
   when: skip_ssl_provisioning | default(false) | bool
 
 # ---------------------------------------------------------
-# PRODUCTION LET'S ENCRYPT
+# PRODUCTION LET'S ENCRYPT (Idempotent)
 # ---------------------------------------------------------
 - name: Check and Generate Real SAN SSL Certificate
   block:
-    - name: Check if SSL certificate is present and valid
+    # 1. Read the current certificate from disk
+    - name: Read existing SSL certificate info
       community.crypto.x509_certificate_info:
         path: "/etc/letsencrypt/live/{{ main_domain }}/fullchain.pem"
       register: cert_info
       ignore_errors: yes
 
-    - name: Determine if certificate needs issuance/renewal
+    # 2. Extract the domains currently on the cert
+    - name: Extract existing SANs from certificate
       ansible.builtin.set_fact:
-        needs_cert: >-
+        # Strips "DNS:" prefix so we can compare apples-to-apples with all_domains
+        existing_sans: >-
           {{
-            cert_info is failed or
-            cert_info.expired | default(false) or
+            cert_info.subject_alt_name
+            | default([])
+            | map('regex_replace', '^DNS:', '')
+            | list
+          }}
+      when: cert_info is succeeded
+
+    # 3. Calculate exactly WHY we might need to run Certbot
+    - name: Determine if certificate needs issuance, expansion, or renewal
+      ansible.builtin.set_fact:
+        # Condition A: Cert doesn't exist or couldn't be read
+        cert_missing: "{{ cert_info is failed }}"
+
+        # Condition B: Domains in vars don't match domains on cert
+        # symmetric_difference returns items in either list but not both
+        domains_changed: >-
+          {{
+            (existing_sans | default([])) | symmetric_difference(all_domains) | length > 0
+          }}
+
+        # Condition C: Cert is expired
+        cert_expired: "{{ cert_info.expired | default(false) }}"
+
+        # Condition D: Cert expires in less than cert_min_days
+        cert_expiring_soon: >-
+          {{
+            cert_info is succeeded and
+            not (cert_info.expired | default(false)) and
             ((cert_info.not_after | to_datetime('%Y%m%d%H%M%SZ')) - (ansible_facts['date_time']['iso8601'] | to_datetime('%Y-%m-%dT%H:%M:%SZ'))).days < (cert_min_days | int)
           }}
 
-    - name: Debug certificate status
-      ansible.builtin.debug:
-        msg: "Certificate needs issuance/renewal: {{ needs_cert }}"
+    # 4. Combine into a single boolean
+    - name: Set final needs_cert fact
+      ansible.builtin.set_fact:
+        needs_cert: >-
+          {{
+            (cert_missing | bool) or
+            (domains_changed | bool) or
+            (cert_expired | bool) or
+            (cert_expiring_soon | bool)
+          }}
 
-    - name: Obtain or Renew Let's Encrypt SAN Certificate
-      command: >
+    # 5. Debugging (Crucial for knowing why it ran or skipped)
+    - name: Debug certificate evaluation status
+      ansible.builtin.debug:
+        msg:
+          - "Certificate Missing:   {{ cert_missing }}"
+          - "Domains Changed:       {{ domains_changed }}"
+          - "Certificate Expired:   {{ cert_expired }}"
+          - "Expiring Soon (<{{ cert_min_days }}d): {{ cert_expiring_soon }}"
+          - ">>> ACTION: Run Certbot = {{ needs_cert }}"
+
+    # 6. Execute Certbot ONLY if needs_cert is true
+    - name: Obtain or Expand Let's Encrypt SAN Certificate
+      ansible.builtin.command: >
         certbot certonly --webroot -w {{ webroot_path }}
         --cert-name {{ main_domain }}
         -d {{ all_domains | join(' -d ') }}
+        --expand
         --non-interactive --agree-tos --email admin@{{ main_domain }}
       when: needs_cert | bool
       async: 300
